@@ -646,6 +646,10 @@
         <div><strong style="font-size:14px">로그아웃</strong><div class="muted" id="logoutWho"></div></div>
         <button class="danger" onclick="logout()">로그아웃</button>
       </div>
+      <div class="row" id="leaveRow" style="padding:8px 0;border-top:1px solid var(--line)">
+        <div><strong style="font-size:14px">회원 탈퇴</strong><div class="muted">계정과 모임 참가 기록이 지워져요</div></div>
+        <button class="danger" onclick="leaveClub()">탈퇴</button>
+      </div>
     </div>
     <div id="claimBox" class="hidden" style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line)">
       <div class="muted" id="claimDesc">관리자에게 받은 코드를 입력하면 관리자 권한이 생깁니다.</div>
@@ -955,6 +959,19 @@ async function loginKakao(){
   if (mid){ sessionStorage.setItem('returnMeetup', mid); if (afterLogin === joinAfterLogin) sessionStorage.setItem('returnJoin', '1'); }
   const { error } = await db.auth.signInWithOAuth({ provider: 'kakao', options: { redirectTo: location.origin + location.pathname, scopes: 'profile_nickname profile_image' } });
   if (error) showError(error);
+}
+// 회원 탈퇴: 본인 계정 삭제 (대표는 먼저 대표를 넘겨야 함)
+async function leaveClub(){
+  if (isOwner()) return toast('대표는 먼저 관리 탭 → 회원 카드에서 다른 관리자에게 대표를 넘긴 뒤 탈퇴할 수 있어요');
+  if (!confirm('정말 탈퇴할까요?\n계정과 모든 모임 참가 기록이 지워지고 되돌릴 수 없어요.\n(쓴 댓글은 작성자 없이 남고, 만든 모임은 관리자가 넘겨받아요)')) return;
+  const t = prompt('확인을 위해 "탈퇴"라고 입력해 주세요');
+  if (t === null) return;
+  if (t.trim() !== '탈퇴') return toast('입력이 달라 탈퇴하지 않았어요');
+  const { error } = await db.rpc('delete_self');
+  if (error) return showError(error);
+  closeProfile();
+  await db.auth.signOut({ scope: 'local' });   // 계정이 이미 지워져 서버 로그아웃은 필요 없음
+  toast('탈퇴했습니다. 그동안 함께해 주셔서 감사합니다');
 }
 async function logout(){
   closeProfile();
@@ -2058,7 +2075,7 @@ function renderStandings(){
 
 // 두 번 눌러도 한 번만 실행 (느린 망에서 모임·대진이 두 번 생기는 것 방지)
 ['submitCreate','generateBracket','toggleJoin','guestAuth','submitNotice','submitSuggest','addMatch','approveParticipant','removeParticipant',
- 'saveDues','deleteDues','saveProfile','deleteMeetup','resetBracket','claimAdmin'].forEach(n => {
+ 'saveDues','deleteDues','saveProfile','deleteMeetup','resetBracket','claimAdmin','leaveClub'].forEach(n => {
   const f = window[n]; if (typeof f !== 'function') return;
   let running = false;
   window[n] = async function(...a){ if (running) return; running = true; try { return await f.apply(this, a); } finally { running = false; } };
