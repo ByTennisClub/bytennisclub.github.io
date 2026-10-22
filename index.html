@@ -306,6 +306,13 @@
 
 <main>
   <div id="banner" class="banner hidden"></div>
+  <!-- 로그인 전 안내: 모임 일정·상세는 로그인한 사람만 -->
+  <div class="card hidden" id="loginGate" style="text-align:center;padding:28px 18px">
+    <img src="icon-192.png" alt="" style="width:64px;height:64px;border-radius:50%" onerror="this.remove()">
+    <div style="font-weight:800;font-size:17px;margin-top:10px" id="gateMsg">로그인하면 모임 일정을 볼 수 있어요</div>
+    <div class="muted" style="margin-top:4px">카카오 또는 이름·전화번호로 들어올 수 있어요. 처음이면 게스트로 가입됩니다.</div>
+    <button class="primary" style="width:100%;margin-top:16px" onclick="requireLogin()">로그인</button>
+  </div>
 
   <!-- 홈 대시보드 -->
   <section id="viewHome" class="hidden">
@@ -534,7 +541,7 @@
   <div class="sheet" style="text-align:center">
     <img src="icon-192.png" alt="" style="width:72px;height:72px;border-radius:50%">
     <div style="font-weight:700;font-size:17px;margin-top:8px">로그인이 필요합니다</div>
-    <p class="muted" style="margin:6px 0 0">모임 만들기와 참가 신청은 로그인 후 이용할 수 있습니다.<br>모임 일정은 로그인 없이도 볼 수 있습니다.</p>
+    <p class="muted" style="margin:6px 0 0">모임 일정 보기와 참가 신청은 로그인 후 이용할 수 있어요.<br>처음이면 게스트로 가입한 뒤 관리자 승인을 받으면 참가할 수 있어요.</p>
     <button class="kakao" onclick="loginKakao()"><svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.8 1.9 5.3 4.7 6.7L5.6 21.5c-.1.3.2.5.5.3l4.6-3.1c.4 0 .8.1 1.3.1 5.5 0 10-3.6 10-8S17.5 3 12 3z"/></svg>카카오로 로그인</button>
     <button class="ghost" style="width:100%;margin-top:8px" onclick="openGuest()">게스트로 참여 (이름 + 전화번호)</button>
     <div style="margin-top:10px"><button class="back" style="margin:0" onclick="closeLogin()">나중에</button></div>
@@ -830,7 +837,7 @@ function renderUser(){
     : '<span>로그인</span>';
 }
 function refreshView(keepScroll){
-  if (state.view === 'detail' && state.current) openDetail(state.current.id, true, keepScroll);
+  if (state.view === 'detail' && (state.current || state.gateMeetup)) openDetail(state.current ? state.current.id : state.gateMeetup, true, keepScroll);
   else showView(state.view, { pop: true, keepScroll });
 }
 // 창(모달)과 뒤로가기: 창을 열면 기록을 하나 쌓아 두고, 폰 뒤로가기·Esc 는 창만 닫음
@@ -919,7 +926,8 @@ function requireLogin(next){
 }
 function closeLogin(){ $('loginModal').classList.remove('open'); afterLogin = null; }
 async function loginKakao(){
-  if (state.current){ sessionStorage.setItem('returnMeetup', state.current.id); if (afterLogin === joinAfterLogin) sessionStorage.setItem('returnJoin', '1'); }
+  const mid = state.current ? state.current.id : (state.view === 'detail' && state.gateMeetup);   // 로그인 안내 화면에서 눌렀어도 그 모임으로 복귀
+  if (mid){ sessionStorage.setItem('returnMeetup', mid); if (afterLogin === joinAfterLogin) sessionStorage.setItem('returnJoin', '1'); }
   const { error } = await db.auth.signInWithOAuth({ provider: 'kakao', options: { redirectTo: location.origin + location.pathname, scopes: 'profile_nickname profile_image' } });
   if (error) showError(error);
 }
@@ -1319,11 +1327,14 @@ function showView(name, opts){
   state.current = null;
   state.view = name;
   if (name !== 'detail' && name !== 'notices') state.prevView = name;
-  ['home','calendar','detail','admin','notices'].forEach(v => $('view'+v[0].toUpperCase()+v.slice(1)).classList.toggle('hidden', v!==name));
+  const gated = !state.user && (name === 'calendar' || name === 'detail');   // 모임 일정·상세는 로그인 후
+  ['home','calendar','detail','admin','notices'].forEach(v => $('view'+v[0].toUpperCase()+v.slice(1)).classList.toggle('hidden', v!==name || gated));
+  $('loginGate').classList.toggle('hidden', !gated);
+  if (gated) $('gateMsg').textContent = name === 'detail' ? '로그인하면 모임 내용을 볼 수 있어요' : '로그인하면 모임 일정을 볼 수 있어요';
   document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.view===name));
   if (!(opts && opts.keepScroll)) window.scrollTo(0,0);
   if (name==='home') loadHome();
-  if (name==='calendar') loadMonth();
+  if (name==='calendar' && !gated) loadMonth();
   if (name==='admin') loadAdmin();
   if (name==='notices') loadNotices();
 }
@@ -1730,6 +1741,10 @@ async function loadHome(){
       + `<button class="ghost" style="min-height:32px;padding:4px 10px;font-size:13px;white-space:nowrap" onclick="event.stopPropagation();manualRefresh()">새로고침</button>`;
     watchApproval();
   } else { an.classList.add('hidden'); clearInterval(pollTimer); pollTimer = null; }
+  // 로그인 전: 모임 일정 대신 로그인 안내 (공지·회칙·회비 안내·예약 링크는 그대로)
+  [$('tiles'), $('upcoming').closest('.card'), $('recentFold').closest('.card')].forEach(e => e.classList.toggle('hidden', !state.user));
+  if (!state.user) $('hero').innerHTML = `<div class="hello">${esc(CLUB_NAME)}에 오신 것을 환영합니다</div>`
+    + `<div class="next" onclick="requireLogin()"><div class="lbl">모임 일정</div><div class="ttl">로그인하고 일정 보기</div><div class="sub">카카오 또는 이름·전화번호로 들어올 수 있어요</div></div>`;
 }
 
 // ===== 상세 =====
@@ -1740,6 +1755,11 @@ function busy(on){
   if (busyN) busyT = setTimeout(() => $('loadbar').classList.add('on'), 150); else $('loadbar').classList.remove('on');
 }
 async function openDetail(id, pop, keepScroll){
+  if (!state.user){
+    showView('detail', { pop, keepScroll }); state.gateMeetup = id;   // 로그인하면 refreshView 가 이 모임을 엶
+    history.replaceState(Object.assign({}, history.state, { view: 'detail', id }), '');
+    return;
+  }
   const seq = ++detailSeq;
   busy(true);
   const [, { data, error }] = await Promise.all([loadSettings(), db.from('meetups').select('*, host:profiles!meetups_created_by_profile_fk(name,experience,gender,birth_year,role,show_crown), participants(*, profiles(name,experience,gender,birth_year,role,show_crown,is_guest)), matches(*)').eq('id', id).single()]);   // 이름 표시 방식(설정)도 함께
@@ -2037,6 +2057,7 @@ Promise.all([initAuth(), loadSettings()]).then(() => {
   sessionStorage.removeItem('returnMeetup'); sessionStorage.removeItem('returnJoin');
   const deep = startParams.get('m') || ret;
   if (deep && /^[0-9a-f-]{36}$/i.test(deep)){
+    if (!state.user) return openDetail(deep);   // 로그인 전: 내용 대신 로그인 안내
     db.from('meetups').select('id').eq('id', deep).maybeSingle().then(async ({ data }) => {
       if (!data){ toast('삭제됐거나 없는 모임이에요'); return maybeOnboard(); }
       await openDetail(deep);
