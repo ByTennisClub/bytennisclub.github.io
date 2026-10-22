@@ -468,6 +468,11 @@
         <input id="fAcctNo" placeholder="계좌번호 (예: 3333-01-1234567)" autocomplete="off" style="margin-top:8px">
         <div style="display:flex;gap:8px;margin-top:8px"><button class="ghost" onclick="saveDues()">회비 안내 저장</button><button class="danger" onclick="deleteDues()">삭제</button></div>
       </div>
+      <div style="margin-top:12px;padding:12px;background:var(--soft);border:1px solid #d1d5db;border-radius:12px">
+        <div class="row"><div style="font-size:14px;font-weight:600">회원 간 전화번호 공개</div>
+          <div class="seg" id="phoneShareSeg"><button type="button" data-v="off" onclick="setPhoneShare('off')">끔</button><button type="button" data-v="on" onclick="setPhoneShare('on')">켬</button></div></div>
+        <div class="muted" style="margin-top:4px">켜면 승인된 회원끼리 회원 카드에서 서로 전화번호를 볼 수 있어요(누르면 전화). 게스트는 다른 사람 번호를 볼 수 없고, 게스트 번호는 관리자만 봐요. 끄면 관리자만 봐요.</div>
+      </div>
       <div id="ownerSettings" class="hidden">
         <div style="margin-top:12px;padding:12px;background:var(--soft);border:1px solid #d1d5db;border-radius:12px">
           <div style="font-size:14px;font-weight:600">회칙 수정 <span class="muted" style="font-weight:400">(대표만)</span></div>
@@ -609,7 +614,7 @@
     </div>
     <label>닉네임</label>
     <input id="fName" maxlength="20" placeholder="예: 홍길동" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229)saveProfile()">
-    <label>전화번호 <span class="muted" style="font-weight:400">(관리자에게만 보입니다)</span></label>
+    <label>전화번호 <span class="muted" style="font-weight:400" id="phoneVisHint">(관리자에게만 보여요)</span></label>
     <input id="fPhone" inputmode="numeric" placeholder="010-0000-0000" autocomplete="tel" maxlength="13" oninput="maskPhone(this)">
     <div class="muted hidden" id="phoneAcctHint">전화번호 계정은 로그인할 때 현재 닉네임과 번호를 씁니다.</div>
     <label>구력</label>
@@ -735,9 +740,17 @@ async function loadSettings(){
   const { data, error } = await db.from('club_settings').select('key,value');
   if (error) return false;
   state.rules = '';   // 회칙은 로그인한 사람만 읽힘 (로그아웃하면 비움)
-  data.forEach(r => { if (r.key === 'display_format') state.displayFormat = r.value; if (r.key === 'rules') state.rules = r.value; });
+  state.phoneShare = false;
+  data.forEach(r => { if (r.key === 'display_format') state.displayFormat = r.value; if (r.key === 'rules') state.rules = r.value; if (r.key === 'phone_share') state.phoneShare = r.value === 'on'; });
   state.settingsLoaded = true;
   return true;
+}
+function renderPhoneShareSeg(){ document.querySelectorAll('#phoneShareSeg button').forEach(b => b.classList.toggle('active', b.dataset.v === (state.phoneShare ? 'on' : 'off'))); }
+async function setPhoneShare(v){
+  const { error } = await db.from('club_settings').upsert({ key: 'phone_share', value: v });
+  if (error) return showError(error);
+  state.phoneShare = v === 'on'; renderPhoneShareSeg();
+  toast(state.phoneShare ? '회원끼리 전화번호가 보이게 했어요 (게스트 제외)' : '전화번호는 이제 관리자만 볼 수 있어요');
 }
 async function setDisplayFormat(v){
   const { error } = await db.from('club_settings').upsert({ key: 'display_format', value: v });
@@ -1042,6 +1055,7 @@ function openProfile(onboard){
   $('crownRow').classList.toggle('hidden', !isOwner());
   $('linkRow').classList.toggle('hidden', !(u.byPhone && !u.hasKakao) || !!onboard);
   $('phoneAcctHint').classList.toggle('hidden', !u.byPhone);
+  $('phoneVisHint').textContent = state.phoneShare && !u.is_guest ? '(관리자와 회원에게 보여요 · 게스트에게는 안 보여요)' : '(관리자에게만 보여요)';
   setCrown(u.show_crown !== false);
   $('fName').value = u.name; $('fAdminCode').value = '';
   pick.experience = u.experience || null; pick.gender = u.gender || null;
@@ -1162,7 +1176,7 @@ async function loadAdmin(){
   $('ownerSettings').classList.toggle('hidden', !isOwner());
   renderFmtSeg();
   loadSuggestions();
-  if (await loadSettings()) fillIfClean('fRules', state.rules || '');
+  if (await loadSettings()){ fillIfClean('fRules', state.rules || ''); renderPhoneShareSeg(); }
   if (await loadDues()){ fillIfClean('fDues', dues.text); fillIfClean('fBank', dues.acct?.bank || ''); fillIfClean('fAcctNo', dues.acct?.number || ''); fillIfClean('fHolder', dues.acct?.holder || ''); }
   const [{ data, error }, pv, pj] = await Promise.all([
     db.from('profiles').select('*').order('created_at'),
@@ -1577,7 +1591,7 @@ async function openMember(uid){
   $('memberModal').classList.add('open');
   const [pr, pv] = await Promise.all([
     db.from('profiles').select('*').eq('id', uid).maybeSingle(),
-    isAdmin() ? db.from('profile_private').select('phone').eq('id', uid).maybeSingle() : Promise.resolve({ data: null })
+    isAdmin() || (state.phoneShare && approved() && !state.user.is_guest) ? db.from('profile_private').select('phone').eq('id', uid).maybeSingle() : Promise.resolve({ data: null })
   ]);
   const u = pr.data; if (!u){ $('memberBody').innerHTML = '<div class="empty">회원 정보를 찾을 수 없어요</div>'; return; }
   const grade = u.role === 'owner' ? '대표 ★' : u.role === 'admin' ? '관리자' : u.is_guest ? '게스트' : '회원';
@@ -1593,7 +1607,9 @@ async function openMember(uid){
         <div><span>성별</span><b>${GENDER[u.gender] || '-'}</b></div>
         <div><span>나이</span><b>${u.birth_year ? age(u.birth_year) + '세' : '-'}</b></div>
       </div>
-      ${isAdmin() ? `<div class="mfoot">${u.birth_year ? u.birth_year + '년생' : '생년 미입력'} · ${pv.data && pv.data.phone ? fmtPhone(pv.data.phone) : '전화번호 미입력'}</div>` : ''}
+      ${isAdmin()
+        ? `<div class="mfoot">${u.birth_year ? u.birth_year + '년생' : '생년 미입력'} · ${pv.data && pv.data.phone ? `<a href="tel:${normPhone(pv.data.phone)}">${fmtPhone(pv.data.phone)}</a>` : '전화번호 미입력'}</div>`
+        : (pv.data && pv.data.phone && u.id !== myId() ? `<div class="mfoot">전화번호 <a href="tel:${normPhone(pv.data.phone)}">${fmtPhone(pv.data.phone)}</a></div>` : '')}
     </div>
     ${isOwner() ? `<div style="margin-top:14px"><div style="font-size:13px;font-weight:700;color:var(--muted);margin-bottom:6px">구력 수정 <span style="font-weight:400">(대표만)</span></div>
       <div class="opts">${Object.entries(EXP).map(([v,l]) => `<button type="button" class="${u.experience===v?'on':''}" onclick="setMemberExp('${u.id}','${v}')">${l}</button>`).join('')}</div></div>` : ''}
