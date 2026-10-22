@@ -679,6 +679,12 @@ const SUPABASE_KEY = 'sb_publishable_aopxcBhoftCxz9Q73zX9og_XKtwDJ-3';
 const KAKAO_JS_KEY = '111f701d16d0bd0232b14926531d6ad0';   // 카카오 개발자 콘솔 > 앱 > 플랫폼 키 > JavaScript 키. 비워 두면 폰 기본 공유창·링크 복사로 대신 동작
 // ===============
 
+// 카카오 로그인·연결에서 돌아올 때 주소에 붙어 오는 오류 (Supabase 가 읽기 전에 미리 기억)
+const authReturn = (() => {
+  const q = new URLSearchParams(location.search), h = new URLSearchParams(location.hash.replace(/^#/, ''));
+  const g = k => q.get(k) || h.get(k) || '';
+  return { error: g('error'), code: g('error_code'), desc: g('error_description') };
+})();
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 document.getElementById('clubName').textContent = CLUB_NAME;
 document.title = CLUB_NAME;
@@ -805,6 +811,24 @@ async function initAuth(){
     if (uid === myId()) return;                     // 같은 사용자면 무시
     setUser(s ? s.user : null).then(() => { refreshView(true); maybeOnboard(); });
   });
+}
+// 카카오 로그인·연결 결과: 실패 이유를 알려 주고, 이미 다른 회원에 연결된 카카오면 그 계정으로 로그인할지 물음
+function handleAuthReturn(){
+  const linking = sessionStorage.getItem('linkingKakao') === '1'; sessionStorage.removeItem('linkingKakao');
+  const what = linking ? '카카오 계정 연결' : '카카오 로그인';
+  if (authReturn.error || authReturn.code){
+    history.replaceState(history.state, '', location.pathname);   // 주소의 오류 표시 정리
+    const d = `${authReturn.error} ${authReturn.code} ${authReturn.desc}`.toLowerCase();
+    if (/identity_already_exists|already linked|already exists/.test(d)){
+      if (confirm('이 카카오 계정은 이미 다른 회원 계정에 연결돼 있어요.\n지금 계정에서 로그아웃하고 그 카카오 계정으로 로그인할까요?'))
+        db.auth.signOut().then(() => loginKakao());
+      else toast('카카오 계정을 연결하지 않았어요');
+    }
+    else if (/access_denied|cancel/.test(d)) toast(`${what}을 취소했어요`);
+    else toast(`${what}에 실패했어요. 잠시 후 다시 해 주세요`);
+    return;
+  }
+  if (linking && state.user) toast(state.user.hasKakao ? '카카오 계정을 연결했어요. 이제 카카오로도 로그인돼요' : '카카오 계정이 연결되지 않았어요. 다시 해 주세요');
 }
 function maybeOnboard(){
   if (!state.user || complete(state.user)) return;
@@ -944,6 +968,7 @@ function renderOpts(id, map, key){
 }
 async function linkKakao(){
   if (!confirm('지금 로그인한 계정에 카카오를 연결할까요?\n카카오 로그인 화면으로 이동합니다.')) return;
+  sessionStorage.setItem('linkingKakao', '1');   // 돌아왔을 때 '연결' 결과로 안내
   const { error } = await db.auth.linkIdentity({ provider: 'kakao', options: { redirectTo: location.origin + location.pathname, scopes: 'profile_nickname profile_image' } });
   if (error){
     if (/manual linking|not enabled|disabled/i.test(error.message)) return toast('Supabase에서 계정 연결(Manual linking)을 켜야 해요');
@@ -2046,6 +2071,7 @@ const cameFromLogin = startParams.has('code') || location.hash.includes('access_
 history.replaceState({ view: localStorage.getItem('startView') || 'home' }, '', startParams.has('m') ? location.pathname : location.href);
 Promise.all([initAuth(), loadSettings()]).then(() => {
   const v = localStorage.getItem('startView') || 'home'; history.replaceState(Object.assign({}, history.state, { view: v }), ''); showView(v, { pop: true });
+  handleAuthReturn();   // 카카오 로그인·연결 결과 안내
   // 카톡 공유 링크(?m=모임id)로 들어왔거나, 카카오 로그인 전에 보던 모임이 있으면 그 모임 열기
   const ret = cameFromLogin ? sessionStorage.getItem('returnMeetup') : null;
   const wantJoin = cameFromLogin && sessionStorage.getItem('returnJoin') === '1';
