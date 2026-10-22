@@ -8,7 +8,7 @@
 | 저장소 | https://github.com/ByTennisClub/bytennisclub.github.io (클럽 전용 계정. main 브랜치 → GitHub Pages 자동 배포, 1~2분) |
 | 데이터 | Supabase 프로젝트 `wzjoiitmujirjtliwwjg` (공개 키는 index.html 상단, service_role 키는 절대 넣지 말 것) |
 | 로그인 | 카카오 OAuth(Supabase Kakao provider), 전화번호 계정(이름+번호 → 이메일/비밀번호로 변환) |
-| 상태 (2026-10-22) | SQL 1~27단계 적용됨, 28단계(주최자가 삭제된 모임은 관리자가 관리) 실행 필요. 운영하며 버그 리포트 반영 단계 |
+| 상태 (2026-10-22) | SQL 1~28단계 적용됨, 29단계(내부 함수 외부 호출 차단) 실행 필요. 운영하며 버그 리포트 반영 단계 |
 
 ## 파일 구성
 - `index.html` : 화면 + 동작 전체. 상단 상수로 모임 이름(`CLUB_NAME`), 모임 종류 이름(`KIND`), 코트 예약 링크(`LINKS`) 수정
@@ -20,7 +20,7 @@
 ## 수정하고 배포하는 법
 1. `index.html` 수정 → 로컬 확인은 폴더에서 `python -m http.server 8765` 후 http://localhost:8765
 2. `git add -A && git commit -m "..." && git push` → 1~2분 뒤 공개 주소에 반영
-3. DB 구조를 바꿀 때는 `schema29_*.sql` 처럼 새 번호 파일을 만들고 Supabase → SQL Editor 에서 Run (기존 파일은 수정하지 않음)
+3. DB 구조를 바꿀 때는 `schema30_*.sql` 처럼 새 번호 파일을 만들고 Supabase → SQL Editor 에서 Run (기존 파일은 수정하지 않음)
 
 ## Supabase 대시보드 설정 (코드 밖에서 켜 둔 것)
 - Authentication → Providers → **Kakao** 켜짐 (REST API 키 + Client Secret). 카카오 개발자 콘솔은 **개인 개발자 비즈 앱**으로 전환해 이메일 동의 항목 사용
