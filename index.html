@@ -462,7 +462,7 @@
       </div>
       <div style="margin-top:12px;padding:12px;background:var(--soft);border:1px solid #d1d5db;border-radius:12px">
         <div style="font-size:14px;font-weight:600">회비 안내 · 입금 계좌</div>
-        <div class="muted">홈의 "회비" 카드에 보입니다. 안내 글은 누구나, 입금 계좌는 승인된 회원(게스트 제외)만 볼 수 있고 누르면 복사됩니다.</div>
+        <div class="muted">홈의 "회비" 카드에 보입니다. 회비 카드는 승인된 회원 이상(게스트 제외)만 볼 수 있고, 입금 계좌를 누르면 복사됩니다.</div>
         <textarea id="fDues" style="min-height:90px;margin-top:8px;font-size:14px" placeholder="예: 월 회비 30,000원, 매월 10일까지 입금"></textarea>
         <div class="two" style="margin-top:8px"><input id="fBank" placeholder="은행 (예: 카카오뱅크)" autocomplete="off"><input id="fHolder" placeholder="예금주" autocomplete="off"></div>
         <input id="fAcctNo" placeholder="계좌번호 (예: 3333-01-1234567)" autocomplete="off" style="margin-top:8px">
@@ -723,6 +723,7 @@ function fmtName(p){
 async function loadSettings(){
   const { data, error } = await db.from('club_settings').select('key,value');
   if (error) return false;
+  state.rules = '';   // 회칙은 로그인한 사람만 읽힘 (로그아웃하면 비움)
   data.forEach(r => { if (r.key === 'display_format') state.displayFormat = r.value; if (r.key === 'rules') state.rules = r.value; });
   state.settingsLoaded = true;
   return true;
@@ -1388,14 +1389,12 @@ async function loadDues(){
   return true;
 }
 function renderDues(){
-  const canSee = approved() && !state.user.is_guest, a = dues.acct;   // 입금 계좌는 회원 이상 (DB: schema24)
-  const show = !!dues.text || (canSee && !!a);
+  const canSee = approved() && !state.user.is_guest, a = dues.acct;   // 회비 카드는 회원 이상만 (DB: schema27)
+  const show = canSee && (!!dues.text || !!a);
   $('duesCard').classList.toggle('hidden', !show);
-  if (!show) return;
+  if (!show){ $('duesText').innerHTML = ''; $('duesAcct').innerHTML = ''; return; }   // 로그아웃 뒤 화면에 계좌가 남지 않게
   $('duesText').innerHTML = dues.text.split('\n').map(l => `<div class="pl">${esc(l.trim()) || '&nbsp;'}</div>`).join('');
-  $('duesAcct').innerHTML = !canSee
-    ? (dues.hasAcct ? `<div class="link" onclick="acctLocked()"><span>입금 계좌</span><span class="muted" style="font-weight:500">${!state.user ? '로그인하면 보여요' : state.user.is_guest ? '회원만 볼 수 있어요' : '승인 후 볼 수 있어요'}</span></div>` : '')
-    : !a ? ''
+  $('duesAcct').innerHTML = !a ? ''
     : `<div class="link" id="acctBtn" onclick="toggleAcct()"><span>입금 계좌</span><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></div>
        <div class="acctBox hidden" id="duesAcctBox" onclick="copyAcct()">
          <div style="min-width:0"><div class="bank">${esc(a.bank || '')}</div><div class="num">${esc(a.number)}</div>${a.holder ? `<div class="muted">예금주 ${esc(a.holder)}</div>` : ''}</div>
@@ -1410,10 +1409,6 @@ function toggleDues(){
   $('duesBody').classList.toggle('hidden', !open); $('duesFold').classList.toggle('open', open);
 }
 function toggleAcct(){ const open = $('duesAcctBox').classList.toggle('hidden') === false; $('acctBtn').classList.toggle('open', open); }
-function acctLocked(){
-  if (!requireLogin()) return;
-  toast(state.user.is_guest ? '입금 계좌는 회원만 볼 수 있어요' : state.user.status === 'blocked' ? '휴식 상태라 볼 수 없어요' : '관리자 승인 후 볼 수 있어요');
-}
 function copyAcct(){ const a = dues.acct; if (a) copyText(a.number, `${a.bank ? a.bank + ' ' : ''}계좌번호를 복사했어요. 은행 앱에 붙여 넣으세요`); }
 async function copyText(t, msg){
   try { await navigator.clipboard.writeText(t); return toast(msg); } catch {}
@@ -1726,7 +1721,7 @@ async function loadHome(){
       <div class="title"><span class="badge ${kc(m.kind)}">${KINDS[m.kind]||''}</span>${esc(m.title)}</div>
       <div class="muted">${fmtDate(m.date)} · ${esc(m.location||'')} · ${apCount(m)}명 참가</div>
     </div>`).join('') : '<div class="empty">아직 지난 모임이 없어요</div>';
-  renderRules();
+  loadSettings().then(renderRules);   // 로그인 상태가 바뀌었을 수 있어 회칙을 다시 불러옴
   loadDues();
   loadNoticeStrip();
   $('links').innerHTML = LINKS.map((l, i) => `<div class="link" onclick="openLink(${i})"><span>${esc(l.name)}</span><svg viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/></svg></div>`).join('');
@@ -1741,8 +1736,8 @@ async function loadHome(){
       + `<button class="ghost" style="min-height:32px;padding:4px 10px;font-size:13px;white-space:nowrap" onclick="event.stopPropagation();manualRefresh()">새로고침</button>`;
     watchApproval();
   } else { an.classList.add('hidden'); clearInterval(pollTimer); pollTimer = null; }
-  // 로그인 전: 모임 일정 대신 로그인 안내 (공지·회칙·회비 안내·예약 링크는 그대로)
-  [$('tiles'), $('upcoming').closest('.card'), $('recentFold').closest('.card')].forEach(e => e.classList.toggle('hidden', !state.user));
+  // 로그인 전: 모임 일정·회칙 대신 로그인 안내 (공지·예약 링크는 그대로, 회비는 회원 이상만)
+  [$('tiles'), $('upcoming').closest('.card'), $('recentFold').closest('.card'), $('rulesFold').closest('.card')].forEach(e => e.classList.toggle('hidden', !state.user));
   if (!state.user) $('hero').innerHTML = `<div class="hello">${esc(CLUB_NAME)}에 오신 것을 환영합니다</div>`
     + `<div class="next" onclick="requireLogin()"><div class="lbl">모임 일정</div><div class="ttl">로그인하고 일정 보기</div><div class="sub">카카오 또는 이름·전화번호로 들어올 수 있어요</div></div>`;
 }
