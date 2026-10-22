@@ -402,9 +402,9 @@
       </div>
       <button class="primary" id="joinBtn" style="width:100%;margin-top:4px" onclick="toggleJoin()">참가</button>
     </div>
-    <div class="card">
+    <div class="card" id="bracketCard">
       <div class="row"><strong>대진표</strong>
-        <div style="display:flex;gap:6px;align-items:center">
+        <div id="bracketCtl" style="display:flex;gap:6px;align-items:center">
           <select id="rounds" style="width:auto">
             <option value="1">1라운드</option><option value="2">2라운드</option><option value="3" selected>3라운드</option>
             <option value="4">4라운드</option><option value="5">5라운드</option><option value="6">6라운드</option>
@@ -413,10 +413,16 @@
           <button class="danger hidden" id="resetBtn" onclick="resetBracket()">초기화</button>
         </div>
       </div>
+      <div class="row hidden" id="bracketSwRow" style="margin-top:8px;padding:8px 0;border-top:1px solid var(--line)">
+        <div><strong style="font-size:14px">이 모임 대진표</strong><div class="muted" id="bracketSwHint"></div></div>
+        <div class="seg" id="bracketSeg"><button type="button" data-v="on" onclick="setBracket(true)">켬</button><button type="button" data-v="off" onclick="setBracket(false)">끔</button></div>
+      </div>
+      <div id="bracketBody">
       <p class="muted" id="bracketHint"></p>
       <div id="bracket"></div>
       <button class="addBtn hidden" id="addRoundBtn" onclick="addMatch(null)">+ 라운드 추가</button>
       <div id="standings"></div>
+      </div>
     </div>
     <div class="card">
       <strong>댓글 <span class="muted" id="cmtCount"></span></strong>
@@ -1986,6 +1992,14 @@ function renderDetail(){
   $('genBtn').disabled = names.length < 4;
   $('addRoundBtn').classList.toggle('hidden', !manage);
   $('resetBtn').classList.toggle('hidden', !manage || !m.matches.length);
+  // 대진표 켬/끔 (모임마다 주최자가 정함): 꺼지면 참가자에겐 카드째 숨기고 관리하는 사람에겐 스위치만. 33단계 전엔 항상 켬
+  const bOn = m.bracket !== false;
+  $('bracketCard').classList.toggle('hidden', !bOn && !manage);
+  $('bracketSwRow').classList.toggle('hidden', !manage || !('bracket' in m));
+  document.querySelectorAll('#bracketSeg button').forEach(b => b.classList.toggle('active', b.dataset.v === (bOn ? 'on' : 'off')));
+  $('bracketSwHint').textContent = bOn ? '끄면 참가자 화면에서 대진표가 안 보여요' : ('참가자에게 대진표가 안 보여요' + (m.matches.length ? ' · 만든 대진은 남아 있어요' : ''));
+  $('bracketCtl').classList.toggle('hidden', !bOn);
+  $('bracketBody').classList.toggle('hidden', !bOn);
   $('bracketHint').textContent = !manage
     ? (m.matches.length ? (m.kind==='regular' ? '점수는 주최자와 관리자가 입력합니다.' : '점수는 주최자가 입력합니다.') : (m.kind==='regular' ? '대진표는 주최자나 관리자가 만들면 여기에 표시됩니다.' : '대진표는 주최자가 만들면 여기에 표시됩니다.'))
     : names.length < 4
@@ -2150,6 +2164,16 @@ async function addMatch(round){
   m.matches.push(data); renderBracket();
   if (!round) $('bracketHint').textContent = `${r}라운드를 추가했어요. 선수를 고르세요.`;
 }
+// 대진표 켬/끔: 이 모임을 관리하는 사람만. 꺼도 대진·점수는 지우지 않음
+async function setBracket(on){
+  const m = state.current;
+  if (!m || !canManage(m) || (m.bracket !== false) === on) return;
+  const { data, error } = await db.from('meetups').update({ bracket: on }).eq('id', m.id).select('id');
+  if (error) return showError(error);
+  if (!data || !data.length) return toast('이 모임의 대진표를 바꿀 권한이 없어요');
+  m.bracket = on; renderDetail();
+  toast(on ? '대진표를 켰어요' : '대진표를 껐어요. 참가자 화면에서 안 보여요');
+}
 async function resetBracket(){
   const m = state.current;
   if (!confirm('대진표를 모두 지울까요?\n점수도 함께 사라지고 되돌릴 수 없어요.')) return;
@@ -2200,7 +2224,7 @@ function renderStandings(){
 
 // 두 번 눌러도 한 번만 실행 (느린 망에서 모임·대진이 두 번 생기는 것 방지)
 ['submitCreate','generateBracket','toggleJoin','guestAuth','submitNotice','submitSuggest','addMatch','approveParticipant','removeParticipant',
- 'saveDues','deleteDues','saveProfile','deleteMeetup','resetBracket','claimAdmin','leaveClub'].forEach(n => {
+ 'saveDues','deleteDues','saveProfile','deleteMeetup','resetBracket','setBracket','claimAdmin','leaveClub'].forEach(n => {
   const f = window[n]; if (typeof f !== 'function') return;
   let running = false;
   window[n] = async function(...a){ if (running) return; running = true; try { return await f.apply(this, a); } finally { running = false; } };
