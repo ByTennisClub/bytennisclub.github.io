@@ -125,6 +125,10 @@
   .mcard .mgrid span{display:block;font-size:11px;color:var(--muted);margin-bottom:3px}
   .mcard .mgrid b{font-size:15px;font-weight:700}
   .mcard .mfoot{padding:10px 14px;border-top:1px solid var(--line);font-size:13px;color:var(--muted);background:var(--card)}
+  .mcard .mquote{position:relative;padding:14px 40px;background:var(--card);border-top:1px solid var(--line);font-size:14px;line-height:1.6;color:#374151;white-space:pre-wrap;word-break:keep-all;text-align:center}
+  .mcard .mquote:before,.mcard .mquote:after{position:absolute;font-size:36px;line-height:1;color:var(--accent);opacity:.35;font-family:Georgia,'Times New Roman',serif}
+  .mcard .mquote:before{content:"\201C";left:12px;top:8px}
+  .mcard .mquote:after{content:"\201D";right:12px;bottom:-8px}
   .mcard .mfoot a.tel{display:inline-flex;align-items:center;gap:5px;padding:3px 10px 3px 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent-ink);font-weight:700;text-decoration:none;font-variant-numeric:tabular-nums}   /* 누르면 전화 */
   .mcard .mfoot a.tel svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
   .mcard .mfoot a.tel:active{opacity:.7}
@@ -651,6 +655,8 @@
     <div class="opts" id="optGender"></div>
     <label>생년 <span class="muted" style="font-weight:400">(뒤 두 자리)</span></label>
     <input id="fBirth" inputmode="numeric" maxlength="2" placeholder="예: 88" style="width:120px">
+    <div id="memoField"><label>메모 <span class="muted" style="font-weight:400">(회원 카드에 보여요 · 100자)</span></label>
+    <textarea id="fMemo" maxlength="100" style="min-height:56px" placeholder="예: 주말 오전 가능, 복식 좋아해요"></textarea></div>
     <div style="margin-top:16px;display:flex;gap:8px;justify-content:space-between">
       <button class="danger" id="profileLeft" onclick="logout()">나중에</button>
       <button class="primary" style="flex:1" onclick="saveProfile()">저장</button>
@@ -1104,6 +1110,7 @@ function openProfile(onboard){
   $('fName').value = u.name; $('fAdminCode').value = '';
   pick.experience = u.experience || null; pick.gender = u.gender || null;
   renderOpts('optExp', EXP, 'experience'); renderOpts('optGender', GENDER, 'gender');
+  $('memoField').classList.toggle('hidden', !('memo' in u)); $('fMemo').value = u.memo || '';   // memo 칸이 DB 에 생기기 전(32단계 전)엔 숨김
   $('fBirth').value = u.birth_year ? String(u.birth_year).slice(2) : '';
   $('fPhone').value = fmtPhone(u.phone || '');
   $('profileTitle').textContent = onboard ? '프로필을 완성해 주세요' : '내 정보';
@@ -1170,6 +1177,7 @@ async function saveProfile(){
   const yy = $('fBirth').value.trim();
   if (yy && !/^\d{2}$/.test(yy)) return toast('생년은 뒤 두 자리만 입력하세요');
   const row = { name: n, experience: pick.experience, gender: pick.gender, birth_year: yy ? yy2year(yy) : null };
+  if ('memo' in state.user) row.memo = $('fMemo').value.trim().slice(0, 100) || null;
   if (isOwner()) row.show_crown = crownOn;
   const phone = normPhone($('fPhone').value);
   if (phone && (phone.length < 10 || phone.length > 11)) return toast('전화번호를 확인하세요');
@@ -1673,6 +1681,7 @@ async function openMember(uid){
         <div><span>성별</span><b>${GENDER[u.gender] || '-'}</b></div>
         <div><span>생년</span><b>${u.birth_year ? String(u.birth_year).slice(2) : '-'}</b></div>
       </div>
+      ${u.memo ? `<div class="mquote">${esc(u.memo)}</div>` : ''}
       ${isAdmin()
         ? `<div class="mfoot">${pv.data && pv.data.phone ? `<a class="tel" href="tel:${normPhone(pv.data.phone)}"><svg viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>${fmtPhone(pv.data.phone)}</a>` : '전화번호 미입력'}</div>`
         : u.id === myId()   // 내 카드: 내 번호와 누구에게 보이는지
