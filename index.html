@@ -1867,13 +1867,11 @@ function setStartView(v){
 // ===== 홈 =====
 async function loadHome(){
   const t = new Date(); const nLast = new Date(t.getFullYear(), t.getMonth()+2, 0);   // 다가오는 모임: 오늘부터 다음 달 말까지
-  const mFirst = new Date(t.getFullYear(), t.getMonth(), 1), mLast = new Date(t.getFullYear(), t.getMonth()+1, 0);
-  const [up, past, month] = await Promise.all([
+  const [up, past] = await Promise.all([
     db.from('meetups').select('*, participants(name,user_id,status)').gte('date', todayStr).lte('date', ymd(nLast)).order('date').order('start_time'),
-    db.from('meetups').select('*, participants(status)').lt('date', todayStr).order('date', {ascending:false}).limit(3),
-    db.from('meetups').select('id', {count:'exact', head:true}).gte('date', ymd(mFirst)).lte('date', ymd(mLast))
+    db.from('meetups').select('*, participants(status)', {count:'exact'}).lt('date', todayStr).order('date', {ascending:false}).limit(3)   // 목록은 최근 3개, count 는 지난 모임 전체
   ]);
-  const err = up.error || past.error || month.error;
+  const err = up.error || past.error;
   if (err) showError(err); else $('banner').classList.add('hidden');
   const ups = up.data || [];
   const mine = ups.filter(m => m.participants.some(p=>p.user_id===myId() && p.status!=='pending'));
@@ -1888,8 +1886,8 @@ async function loadHome(){
     : `<div class="next empty"><div class="ttl">예정된 모임이 없어요</div><div class="sub">${state.user && state.user.is_guest ? '새 모임이 생기면 여기에 보여요' : '모임을 만들어 사람들을 모아 보세요'}</div></div>`);
   $('tiles').classList.toggle('two', !state.user);
   $('tiles').innerHTML = `
-    <div class="tile"><b>${month.count ?? 0}</b><span>이번 달 모임</span></div>
-    <div class="tile"><b>${ups.filter(m => m.date > ymd(mLast)).length}</b><span>다음 달 모임</span></div>
+    <div class="tile"><b>${past.count ?? 0}</b><span>지난 모임</span></div>
+    <div class="tile"><b>${ups.length}</b><span>다가올 모임</span></div>
     ${state.user ? `<div class="tile"><b>${mine.length}</b><span>내 참가 예정</span></div>` : ''}`;
   state.ups = ups; renderUpcoming();
   const pasts = past.data || [];
