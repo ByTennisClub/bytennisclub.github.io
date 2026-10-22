@@ -842,7 +842,7 @@ function handleAuthReturn(){
     const d = `${authReturn.error} ${authReturn.code} ${authReturn.desc}`.toLowerCase();
     if (/identity_already_exists|already linked|already exists/.test(d)){
       if (confirm('이 카카오 계정은 이미 다른 회원 계정에 연결돼 있어요.\n지금 계정에서 로그아웃하고 그 카카오 계정으로 로그인할까요?'))
-        db.auth.signOut().then(() => loginKakao());
+        signOutHere().then(() => loginKakao());
       else toast('카카오 계정을 연결하지 않았어요');
     }
     else if (/access_denied|cancel/.test(d)) toast(`${what}을 취소했어요`);
@@ -987,13 +987,19 @@ async function leaveClub(){
   const { error } = await db.rpc('delete_self');
   if (error) return showError(error);
   closeProfile();
-  await db.auth.signOut({ scope: 'local' });   // 계정이 이미 지워져 서버 로그아웃은 필요 없음
+  await signOutHere();   // 계정이 이미 지워져 서버 쪽 세션이 없어도 이 기기에서 확실히 로그아웃
   toast('탈퇴했습니다. 그동안 함께해 주셔서 감사합니다');
+}
+// 로그아웃: 서버 세션이 이미 만료·삭제돼 있어도("Auth session missing") 이 기기의 로그인 정보는 반드시 지움
+async function signOutHere(){
+  let r = await db.auth.signOut().catch(e => ({ error: e }));
+  if (r && r.error) r = await db.auth.signOut({ scope: 'local' }).catch(e => ({ error: e }));
+  if (r && r.error) Object.keys(localStorage).filter(k => /^sb-.*-auth-token/.test(k)).forEach(k => localStorage.removeItem(k));
+  if (state.user){ await setUser(null); refreshView(true); }   // 로그아웃 알림이 안 오는 경우에도 화면을 로그아웃 상태로
 }
 async function logout(){
   closeProfile();
-  const { error } = await db.auth.signOut();
-  if (error) return showError(error);
+  await signOutHere();
   toast('로그아웃했습니다');
 }
 const pick = { experience: null, gender: null };
