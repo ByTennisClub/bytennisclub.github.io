@@ -1453,8 +1453,8 @@ async function submitCreate(){
   closeCreate();
   state.selected = row.date;
   const [y,m] = row.date.split('-'); state.year=+y; state.month=m-1;
-  toast('모임을 만들었습니다');
-  if (state.view === 'home') loadHome(); else showView('calendar');
+  toast(`${fmtDate(row.date)} 모임을 만들었습니다`);
+  showView('calendar');   // 만든 날짜가 있는 달로 가서 그날을 선택 (홈은 2주 안 모임만 보여서 다음 달 모임이 안 보였음)
 }
 
 // ===== 상세 =====
