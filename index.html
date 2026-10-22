@@ -273,7 +273,7 @@
   @keyframes lb{from{background-position:-40% 0}to{background-position:140% 0}}
   /* 회비 */
   #acctBtn svg{transition:transform .15s} #acctBtn.open svg{transform:rotate(180deg)}
-  #leaveModal{z-index:12}   /* 내 정보 창 위에 뜸 */
+  #leaveModal,#typedModal{z-index:12}   /* 내 정보·회원 카드 창 위에 뜸 */
   .leaveInfo{margin-top:10px;padding:12px 14px;background:#fef2f2;border:1px solid #fecaca;border-radius:12px;color:#7f1d1d;font-size:14px;line-height:1.6}
   .leaveInfo div+div{margin-top:4px}
   .acctBox{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:6px;padding:12px 14px;border:1.5px dashed var(--accent);background:var(--accent-soft);border-radius:12px;cursor:pointer}
@@ -601,6 +601,20 @@
     <label>내용</label>
     <textarea id="fSuggest" style="min-height:120px" placeholder="예: 모임 시간을 30분 늦추면 좋겠어요"></textarea>
     <button class="primary" style="width:100%;margin-top:16px" onclick="submitSuggest()">보내기</button>
+  </div>
+</div>
+
+<!-- 입력해서 확인하는 창 (회원 삭제 등 되돌릴 수 없는 일) -->
+<div class="modal" id="typedModal" onclick="if(event.target===this&&bdDown===this)typedDone(false)">
+  <div class="sheet">
+    <div class="row"><strong id="tcTitle"></strong><button class="icon" onclick="typedDone(false)">&times;</button></div>
+    <div class="leaveInfo" id="tcInfo"></div>
+    <label>확인을 위해 <b style="color:var(--text)" id="tcWord"></b>라고 입력해 주세요</label>
+    <input id="fTyped" autocomplete="off" oninput="$('tcGo').disabled = this.value.trim() !== $('typedModal').dataset.word" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229&&!$('tcGo').disabled)typedDone(true)">
+    <div style="margin-top:16px;display:flex;gap:8px">
+      <button class="ghost" style="flex:1" onclick="typedDone(false)">취소</button>
+      <button class="primary" id="tcGo" style="flex:1" disabled onclick="typedDone(true)"></button>
+    </div>
   </div>
 </div>
 
@@ -1245,7 +1259,7 @@ async function loadAdmin(){
   $('pendingCount').textContent = pend.length ? `${pend.length}명` : '';
   $('ownerSettings').classList.toggle('hidden', !isOwner());
   $('pending').innerHTML = pend.map(p => memberRow(p,
-      sb('승인', `setStatus('${p.id}','approved')`, 'primary') + sb('삭제', `deleteMember('${p.id}',${jsq(p.name)})`)
+      sb('승인', `setStatus('${p.id}','approved')`, 'primary') + sb('삭제', `deleteMember('${p.id}',${jsq(p.name)},true)`)
     )).join('') || '<div class="empty">승인 대기 중인 가입이 없어요</div>';
   $('memberCount').textContent = `${rest.length}명`;
   $('members').innerHTML = rest.map(p => {
@@ -1257,8 +1271,25 @@ async function loadAdmin(){
     return memberRow(p, a);
   }).join('') || '<div class="empty">회원이 없어요</div>';
 }
-async function deleteMember(id, name){
-  if (!confirm(`${name} 님을 삭제할까요?\n계정과 참가 기록이 모두 지워지고 되돌릴 수 없어요.`)) return false;
+// 되돌릴 수 없는 일 확인: 안내를 보여 주고 정해진 단어를 입력해야 진행 (true/false 로 답)
+let typedResolve = null;
+function askTyped({ title, lines, word, button }){
+  $('tcTitle').textContent = title;
+  $('tcInfo').innerHTML = lines.map(l => `<div>${esc(l)}</div>`).join('');
+  $('tcWord').textContent = word; $('typedModal').dataset.word = word;
+  $('fTyped').value = ''; $('fTyped').placeholder = word;
+  $('tcGo').textContent = button; $('tcGo').disabled = true;
+  $('typedModal').classList.add('open'); setTimeout(() => $('fTyped').focus(), 50);
+  return new Promise(res => { typedResolve = res; });
+}
+function typedDone(ok){ const r = typedResolve; typedResolve = null; $('typedModal').classList.remove('open'); if (r) r(!!ok); }
+// 폰 뒤로가기·Esc 로 닫혀도 '취소'로 처리 (기다리던 동작이 멈춰 있지 않게)
+new MutationObserver(() => { if (!$('typedModal').classList.contains('open') && typedResolve) typedDone(false); })
+  .observe($('typedModal'), { attributes: true, attributeFilter: ['class'] });
+async function deleteMember(id, name, pendingSignup){   // pendingSignup: 승인 대기 가입 삭제는 간단한 확인창
+  const ok = pendingSignup ? confirm(`${name} 님의 가입 신청을 삭제할까요?`) : await askTyped({ title: `${name} 님 삭제`, word: '삭제', button: '삭제하기',
+    lines: ['계정과 모든 모임 참가 기록이 지워지고 되돌릴 수 없어요.', '쓴 댓글은 작성자 없이 남고, 만든 모임은 관리자가 넘겨받아요.'] });
+  if (!ok) return false;
   const { error } = await db.rpc('delete_member', { target: id });
   if (error) return showError(error);
   toast('삭제했습니다'); loadAdmin();
