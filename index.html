@@ -788,7 +788,7 @@ const isAdmin   = () => !!state.user && (state.user.role === 'admin' || state.us
 const isOwner   = () => !!state.user && state.user.role === 'owner';
 const crown     = pr => (pr && pr.role === 'owner' && pr.show_crown !== false) ? ' ★' : '';
 const isHost    = m  => !!state.user && m.created_by_id === state.user.id;
-const canManage = m  => isHost(m) || (isAdmin() && m.kind === 'regular');   // 자유 모임은 주최자만, 정기 모임은 관리자도
+const canManage = m  => isHost(m) || (isAdmin() && (m.kind === 'regular' || !m.created_by_id));   // 자유 모임은 주최자만, 정기 모임·주최자가 삭제된 모임은 관리자도
 const canDelete = m  => isHost(m) || isAdmin();
 const myId      = () => state.user ? state.user.id : null;
 const approved  = () => !!state.user && (isAdmin() || state.user.status === 'approved');
@@ -1811,7 +1811,7 @@ function renderDetail(){
       <div><span>장소</span><b>${esc(m.location||'미정')}</b></div>
       <div><span>코트</span><b>${m.courts ? m.courts+'면' : '미정'} <span class="muted" style="font-weight:400">· 정원 ${capText(m.capacity)}</span></b></div>
       <div><span>참가</span><b>${m.join_mode === 'approve' ? '신청 후 승인' : '자동 승인'}</b></div>
-      <div><span>주최</span><b>${esc(m.host ? fmtName(m.host) : (m.created_by||'-'))}</b></div>
+      <div><span>주최</span><b>${m.host ? esc(fmtName(m.host)) : `${esc(m.created_by || '-')} <span class="muted" style="font-weight:400">(나간 회원 · 관리자가 관리)</span>`}</b></div>
       ${m.note?`<div><span>메모</span><b style="white-space:pre-wrap;font-weight:400">${esc(m.note)}</b></div>`:''}
     </div>`;
   const names = m.participants.map(p=>p.name);
