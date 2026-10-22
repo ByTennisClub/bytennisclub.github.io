@@ -7,7 +7,7 @@
 | 공개 주소 | https://bytennisclub.github.io/ |
 | 저장소 | https://github.com/ByTennisClub/bytennisclub.github.io (클럽 전용 계정. main 브랜치 → GitHub Pages 자동 배포, 1~2분) |
 | 데이터 | Supabase 프로젝트 `wzjoiitmujirjtliwwjg` (공개 키는 index.html 상단, service_role 키는 절대 넣지 말 것) |
-| 로그인 | 카카오 OAuth(Supabase Kakao provider), 전화번호 계정(이름+번호 → 이메일/비밀번호로 변환) |
+| 로그인 | 카카오 OAuth(Supabase Kakao provider, "다른 카카오 계정으로 로그인"은 prompt=login 으로 카카오 로그인 화면 다시 띄움), 전화번호 계정(이름+번호 → 이메일/비밀번호로 변환) |
 | 상태 (2026-10-22) | SQL 1~28단계 적용됨, 29단계(내부 함수 외부 호출 차단)·30단계(회원 탈퇴) 실행 필요. 운영하며 버그 리포트 반영 단계 |
 
 ## 파일 구성

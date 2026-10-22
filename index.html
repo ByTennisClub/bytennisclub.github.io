@@ -543,6 +543,7 @@
     <div style="font-weight:700;font-size:17px;margin-top:8px">로그인이 필요합니다</div>
     <p class="muted" style="margin:6px 0 0">모임 일정 보기와 참가 신청은 로그인 후 이용할 수 있어요.<br>처음이면 게스트로 가입한 뒤 관리자 승인을 받으면 참가할 수 있어요.</p>
     <button class="kakao" onclick="loginKakao()"><svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.8 1.9 5.3 4.7 6.7L5.6 21.5c-.1.3.2.5.5.3l4.6-3.1c.4 0 .8.1 1.3.1 5.5 0 10-3.6 10-8S17.5 3 12 3z"/></svg>카카오로 로그인</button>
+    <button class="linkBtn" id="kakaoOtherBtn" style="margin-top:6px" onclick="loginKakao(true)">다른 카카오 계정으로 로그인</button>
     <button class="ghost" style="width:100%;margin-top:8px" onclick="openGuest()">게스트로 참여 (이름 + 전화번호)</button>
     <div style="margin-top:10px"><button class="back" style="margin:0" onclick="closeLogin()">나중에</button></div>
   </div>
@@ -954,10 +955,10 @@ function requireLogin(next){
   return false;
 }
 function closeLogin(){ $('loginModal').classList.remove('open'); afterLogin = null; }
-async function loginKakao(){
+async function loginKakao(other){   // other: 다른 카카오 계정으로 (카카오 로그인 화면을 다시 띄움)
   const mid = state.current ? state.current.id : (state.view === 'detail' && state.gateMeetup);   // 로그인 안내 화면에서 눌렀어도 그 모임으로 복귀
   if (mid){ sessionStorage.setItem('returnMeetup', mid); if (afterLogin === joinAfterLogin) sessionStorage.setItem('returnJoin', '1'); }
-  const { error } = await db.auth.signInWithOAuth({ provider: 'kakao', options: { redirectTo: location.origin + location.pathname, scopes: 'profile_nickname profile_image' } });
+  const { error } = await db.auth.signInWithOAuth({ provider: 'kakao', options: { redirectTo: location.origin + location.pathname, scopes: 'profile_nickname profile_image', queryParams: other ? { prompt: 'login' } : undefined } });
   if (error) showError(error);
 }
 // 회원 탈퇴: 본인 계정 삭제 (대표는 먼저 대표를 넘겨야 함)
