@@ -75,6 +75,11 @@
 - 권한 함수: `is_admin`, `is_owner`, `is_guest`, `is_approved`, `is_host`, `can_manage`. 보호 트리거 `protect_role`(역할은 대표만, 상태·게스트는 관리자, 관리자 상태·남의 프로필은 대표만), `zz_profiles_staff_not_guest`(관리자·대표 게스트 해제). 참가는 (모임, 회원) 당 하나 — 이름 중복 규칙은 24단계에서 삭제
 - RPC: `claim_admin`, `claim_owner`, `transfer_owner`, `resign_admin`, `delete_member`, `set_admin_code`, `set_owner_code`, `name_available`, `phone_taken`, `sync_guest_credentials`
 
+## Supabase 일시 정지 방지
+무료 프로젝트는 1주일 동안 요청이 없으면 멈춥니다. `.github/workflows/keepalive.yml` 이 주 2회(월·목 오전 9시) 가벼운 조회를 보내 깨워 둡니다.
+- 실패하면 GitHub 이 저장소 주인(ByTennisClub) 메일로 알림 → Supabase 대시보드에서 Restore
+- 저장소에 60일 동안 커밋이 없으면 GitHub 이 예약 실행을 멈춤 → 저장소 Actions 탭에서 다시 켜기 (직접 실행: Actions → Supabase 깨워 두기 → Run workflow)
+
 ## 남은 일 / 메모
 - Allow manual linking 스위치 확인 후 "카카오 계정 연결" 실제 테스트
 - 실사용하며 나온 피드백 반영. 새 기능은 schema 번호 파일 추가 + index.html 수정 + push 패턴 그대로
