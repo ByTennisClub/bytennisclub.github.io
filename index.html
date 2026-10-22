@@ -269,6 +269,9 @@
   @keyframes lb{from{background-position:-40% 0}to{background-position:140% 0}}
   /* 회비 */
   #acctBtn svg{transition:transform .15s} #acctBtn.open svg{transform:rotate(180deg)}
+  #leaveModal{z-index:12}   /* 내 정보 창 위에 뜸 */
+  .leaveInfo{margin-top:10px;padding:12px 14px;background:#fef2f2;border:1px solid #fecaca;border-radius:12px;color:#7f1d1d;font-size:14px;line-height:1.6}
+  .leaveInfo div+div{margin-top:4px}
   .acctBox{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:6px;padding:12px 14px;border:1.5px dashed var(--accent);background:var(--accent-soft);border-radius:12px;cursor:pointer}
   .acctBox:active{opacity:.7}
   .acctBox .bank{font-size:13px;font-weight:700;color:var(--accent-ink)}
@@ -457,8 +460,8 @@
         <div style="font-size:14px;font-weight:600">이름 표시 방식 <span class="muted" style="font-weight:400">(모든 회원 화면에 적용)</span></div>
         <div class="seg" id="fmtSeg" style="margin-top:8px;display:flex">
           <button data-v="name" onclick="setDisplayFormat('name')">닉네임</button>
-          <button data-v="name_age" onclick="setDisplayFormat('name_age')">닉네임 / 나이</button>
-          <button data-v="name_age_exp" onclick="setDisplayFormat('name_age_exp')">닉네임 / 나이 / 구력</button>
+          <button data-v="name_age" onclick="setDisplayFormat('name_age')">닉네임 / 생년</button>
+          <button data-v="name_age_exp" onclick="setDisplayFormat('name_age_exp')">닉네임 / 생년 / 구력</button>
         </div>
         <div class="muted" style="margin-top:6px">예: <span id="fmtExample"></span></div>
         <div class="muted" style="margin-top:4px">모임 상세의 참가자 명단, 대진표, 결과 표에 적용됩니다. 다른 회원 화면에는 다음에 모임을 열 때 반영됩니다.</div>
@@ -592,6 +595,23 @@
   </div>
 </div>
 
+<!-- 회원 탈퇴 -->
+<div class="modal" id="leaveModal" onclick="if(event.target===this&&bdDown===this)closeLeave()">
+  <div class="sheet">
+    <div class="row"><strong>회원 탈퇴</strong><button class="icon" onclick="closeLeave()">&times;</button></div>
+    <div class="leaveInfo">
+      <div>계정과 모든 모임 참가 기록이 지워지고 <b>되돌릴 수 없어요.</b></div>
+      <div>쓴 댓글은 작성자 없이 남고, 만든 모임은 관리자가 넘겨받아요.</div>
+    </div>
+    <label>확인을 위해 <b style="color:var(--text)">탈퇴</b>라고 입력해 주세요</label>
+    <input id="fLeave" autocomplete="off" placeholder="탈퇴" oninput="$('leaveGo').disabled = this.value.trim() !== '탈퇴'" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229&&!$('leaveGo').disabled)leaveClub()">
+    <div style="margin-top:16px;display:flex;gap:8px">
+      <button class="ghost" style="flex:1" onclick="closeLeave()">취소</button>
+      <button class="primary" id="leaveGo" style="flex:1" disabled onclick="leaveClub()">탈퇴하기</button>
+    </div>
+  </div>
+</div>
+
 <!-- 게스트 등록/로그인 -->
 <div class="modal" id="guestModal" onclick="if(event.target===this&&bdDown===this)closeGuest()">
   <div class="sheet">
@@ -657,7 +677,7 @@
       </div>
       <div class="row" id="leaveRow" style="padding:8px 0;border-top:1px solid var(--line)">
         <div><strong style="font-size:14px">회원 탈퇴</strong><div class="muted">계정과 모임 참가 기록이 지워져요</div></div>
-        <button class="danger" onclick="leaveClub()">탈퇴</button>
+        <button class="danger" onclick="openLeave()">탈퇴</button>
       </div>
     </div>
     <div id="claimBox" class="hidden" style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line)">
@@ -735,7 +755,7 @@ const age  = y => y ? String(new Date().getFullYear() - y) : '';
 function fmtName(p){
   const pr = p.profiles || p;
   const parts = [pr.name || p.name];
-  if (state.displayFormat !== 'name' && pr.birth_year) parts.push(age(pr.birth_year));
+  if (state.displayFormat !== 'name' && pr.birth_year) parts.push(born(pr.birth_year));   // 나이 대신 생년(88년생)
   if (state.displayFormat === 'name_age_exp' && pr.experience) parts.push(EXP[pr.experience]);
   return parts.join(' / ') + crown(pr);
 }
@@ -977,25 +997,20 @@ async function loginKakao(other){   // other: 다른 카카오 계정으로 (카
   const { error } = await db.auth.signInWithOAuth({ provider: 'kakao', options: { redirectTo: location.origin + location.pathname, scopes: 'profile_nickname profile_image', queryParams: other ? { prompt: 'login' } : undefined } });
   if (error) showError(error);
 }
-// 회원 탈퇴: 본인 계정 삭제 (대표는 먼저 대표를 넘겨야 함)
-async function leaveClub(){
+// 회원 탈퇴: 본인 계정 삭제 (대표는 먼저 대표를 넘겨야 함). 내 정보 위에 확인 창을 띄움
+function openLeave(){
   if (isOwner()) return toast('대표는 먼저 관리 탭 → 회원 카드에서 다른 관리자에게 대표를 넘긴 뒤 탈퇴할 수 있어요');
-  if (!confirm('정말 탈퇴할까요?\n계정과 모든 모임 참가 기록이 지워지고 되돌릴 수 없어요.\n(쓴 댓글은 작성자 없이 남고, 만든 모임은 관리자가 넘겨받아요)')) return;
-  const t = prompt('확인을 위해 "탈퇴"라고 입력해 주세요');
-  if (t === null) return;
-  if (t.trim() !== '탈퇴') return toast('입력이 달라 탈퇴하지 않았어요');
+  $('fLeave').value = ''; $('leaveGo').disabled = true;
+  $('leaveModal').classList.add('open'); setTimeout(() => $('fLeave').focus(), 50);
+}
+function closeLeave(){ $('leaveModal').classList.remove('open'); }
+async function leaveClub(){
+  if ($('fLeave').value.trim() !== '탈퇴') return;
   const { error } = await db.rpc('delete_self');
   if (error) return showError(error);
-  closeProfile();
+  closeLeave(); closeProfile();
   await signOutHere();   // 계정이 이미 지워져 서버 쪽 세션이 없어도 이 기기에서 확실히 로그아웃
   toast('탈퇴했습니다. 그동안 함께해 주셔서 감사합니다');
-}
-// 로그아웃: 서버 세션이 이미 만료·삭제돼 있어도("Auth session missing") 이 기기의 로그인 정보는 반드시 지움
-async function signOutHere(){
-  let r = await db.auth.signOut().catch(e => ({ error: e }));
-  if (r && r.error) r = await db.auth.signOut({ scope: 'local' }).catch(e => ({ error: e }));
-  if (r && r.error) Object.keys(localStorage).filter(k => /^sb-.*-auth-token/.test(k)).forEach(k => localStorage.removeItem(k));
-  if (state.user){ await setUser(null); refreshView(true); }   // 로그아웃 알림이 안 오는 경우에도 화면을 로그아웃 상태로
 }
 async function logout(){
   closeProfile();
@@ -1614,10 +1629,10 @@ async function openMember(uid){
       <div class="mgrid">
         <div><span>구력</span><b>${EXP[u.experience] || '-'}</b></div>
         <div><span>성별</span><b>${GENDER[u.gender] || '-'}</b></div>
-        <div><span>나이</span><b>${u.birth_year ? age(u.birth_year) + '세' : '-'}</b></div>
+        <div><span>생년</span><b>${u.birth_year ? born(u.birth_year) : '-'}</b></div>
       </div>
       ${isAdmin()
-        ? `<div class="mfoot">${u.birth_year ? u.birth_year + '년생' : '생년 미입력'} · ${pv.data && pv.data.phone ? `<a class="tel" href="tel:${normPhone(pv.data.phone)}"><svg viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>${fmtPhone(pv.data.phone)}</a>` : '전화번호 미입력'}</div>`
+        ? `<div class="mfoot">${pv.data && pv.data.phone ? `<a class="tel" href="tel:${normPhone(pv.data.phone)}"><svg viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>${fmtPhone(pv.data.phone)}</a>` : '전화번호 미입력'}</div>`
         : u.id === myId()   // 내 카드: 내 번호와 누구에게 보이는지
           ? `<div class="mfoot">${pv.data && pv.data.phone ? `내 전화번호 ${fmtPhone(pv.data.phone)}` : '전화번호 미입력 (내 정보에서 입력)'} · ${state.phoneShare && !state.user.is_guest ? '관리자와 회원에게 보여요' : '관리자에게만 보여요'}</div>`
           : (pv.data && pv.data.phone ? `<div class="mfoot"><a class="tel" href="tel:${normPhone(pv.data.phone)}"><svg viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>${fmtPhone(pv.data.phone)}</a></div>` : '')}
