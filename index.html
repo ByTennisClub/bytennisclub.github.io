@@ -755,7 +755,7 @@ const age  = y => y ? String(new Date().getFullYear() - y) : '';
 function fmtName(p){
   const pr = p.profiles || p;
   const parts = [pr.name || p.name];
-  if (state.displayFormat !== 'name' && pr.birth_year) parts.push(born(pr.birth_year));   // 나이 대신 생년(88년생)
+  if (state.displayFormat !== 'name' && pr.birth_year) parts.push(String(pr.birth_year).slice(2));   // 나이 대신 생년 숫자(88)
   if (state.displayFormat === 'name_age_exp' && pr.experience) parts.push(EXP[pr.experience]);
   return parts.join(' / ') + crown(pr);
 }
@@ -806,7 +806,7 @@ function showError(e){
   if (/Failed to fetch|Load failed|NetworkError/i.test(msg)) return toast('인터넷 연결을 확인해 주세요');
   if (code === '23505' || /duplicate key/.test(msg)) return toast('이미 등록돼 있어요');
   if (code === '23503' || /foreign key/.test(msg)) return toast('삭제됐거나 없는 모임이에요');
-  if (/jwt expired|JWT expired|invalid jwt/i.test(msg)) return toast('로그인이 만료됐어요. 다시 로그인해 주세요');
+  if (deadSession(e)){ signOutHere(); return toast('로그인이 끊겼어요. 다시 로그인해 주세요'); }   // 끊긴 로그인은 이 기기에서 정리
   if (code === '23514' || code === '22P02' || /check constraint|invalid input syntax/.test(msg)) return toast('입력값을 확인해 주세요');
   if (/schema cache|does not exist|relation/.test(msg)) {
     $('banner').innerHTML = '데이터베이스 준비가 안 됐습니다. Supabase → SQL Editor 에서 <code>schema.sql</code> 과 <code>schema2_auth.sql</code> 을 실행해 주세요.';
@@ -843,9 +843,17 @@ async function requireApproved(){
   return false;
 }
 
+// 이 기기에 남은 로그인이 서버에서 이미 끊긴 것(만료·로그아웃·삭제된 계정)인지
+const deadSession = e => !!e && (e.status === 401 || e.status === 403 || e.status === 404
+  || /session missing|session_not_found|user_not_found|refresh token|jwt expired|invalid jwt/i.test(e.message || ''));
 async function initAuth(){
   const { data: { session } } = await db.auth.getSession();
-  await setUser(session ? session.user : null);
+  let user = session ? session.user : null;
+  if (session){   // 끊긴 로그인이 남아 있으면 이 기기에서 정리하고 로그아웃 상태로 시작
+    const { error } = await db.auth.getUser();
+    if (deadSession(error)){ await signOutHere(); user = null; }
+  }
+  await setUser(user);
   if (location.hash.includes('access_token') || location.search.includes('code=')) history.replaceState(null, '', location.pathname);
   db.auth.onAuthStateChange((event, s) => {
     const uid = s ? s.user.id : null;
@@ -1011,6 +1019,13 @@ async function leaveClub(){
   closeLeave(); closeProfile();
   await signOutHere();   // 계정이 이미 지워져 서버 쪽 세션이 없어도 이 기기에서 확실히 로그아웃
   toast('탈퇴했습니다. 그동안 함께해 주셔서 감사합니다');
+}
+// 로그아웃: 서버 세션이 이미 만료·삭제돼 있어도("Auth session missing") 이 기기의 로그인 정보는 반드시 지움
+async function signOutHere(){
+  let r = await db.auth.signOut().catch(e => ({ error: e }));
+  if (r && r.error) r = await db.auth.signOut({ scope: 'local' }).catch(e => ({ error: e }));
+  if (r && r.error) Object.keys(localStorage).filter(k => /^sb-.*-auth-token/.test(k)).forEach(k => localStorage.removeItem(k));
+  if (state.user){ await setUser(null); refreshView(true); }   // 로그아웃 알림이 안 오는 경우에도 화면을 로그아웃 상태로
 }
 async function logout(){
   closeProfile();
@@ -1629,7 +1644,7 @@ async function openMember(uid){
       <div class="mgrid">
         <div><span>구력</span><b>${EXP[u.experience] || '-'}</b></div>
         <div><span>성별</span><b>${GENDER[u.gender] || '-'}</b></div>
-        <div><span>생년</span><b>${u.birth_year ? born(u.birth_year) : '-'}</b></div>
+        <div><span>생년</span><b>${u.birth_year ? String(u.birth_year).slice(2) : '-'}</b></div>
       </div>
       ${isAdmin()
         ? `<div class="mfoot">${pv.data && pv.data.phone ? `<a class="tel" href="tel:${normPhone(pv.data.phone)}"><svg viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>${fmtPhone(pv.data.phone)}</a>` : '전화번호 미입력'}</div>`
