@@ -214,6 +214,11 @@
   .voteBtns button.yes.on{background:var(--accent);border-color:var(--accent);color:#fff}
   .voteBtns button.no.on{background:#475569;border-color:#475569;color:#fff}
   .voteBtns button:disabled{opacity:.5;cursor:default}
+  .vsum{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:0 0 10px;padding:9px 12px;background:var(--soft);border:1px solid var(--line);border-radius:10px;font-size:13px;color:var(--muted);cursor:pointer}
+  .vsum b{color:var(--text)}
+  .vsum .vmore{display:inline-flex;align-items:center;gap:2px;font-weight:700;color:var(--text);white-space:nowrap}
+  .vsum svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2.2;transition:transform .15s}
+  .vsum.open svg{transform:rotate(180deg)}
   .vgroup{margin:0 0 10px}
   .vgroup .vh{font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px}
   .vgroup .people{margin:0}
@@ -2011,9 +2016,13 @@ function renderDetail(){
   const novote = showVote ? (m.members || []).filter(u => !voted.has(u.id) && (u.created_at || '').slice(0, 10) <= m.date) : [];   // 모임 뒤에 가입한 사람은 빼고
   const vgroup = (t, arr) => arr.length ? `<div class="vgroup"><div class="vh">${t} ${arr.length}</div><div class="people">${arr.join('')}</div></div>` : '';
   $('voteLists').classList.toggle('hidden', !showVote);
-  $('voteLists').innerHTML = showVote
-    ? vgroup('불참', absent.map(p => `<span class="person absent" onclick="${tap(p.user_id, true)}">${esc(fmtName(p))}</span>`))
-      + vgroup('미투표', novote.map(u => `<span class="person novote" onclick="${tap(u.id, true)}">${esc(fmtName(u))}</span>`))
+  // 불참·미투표는 숫자만 보이고 '상세보기'를 누르면 이름 (출석 정리 중엔 펼친 채로)
+  const vOpen = attOn || state.voteOpen === m.id;
+  $('voteLists').innerHTML = showVote && (absent.length || novote.length)
+    ? `<div class="vsum${vOpen ? ' open' : ''}" onclick="toggleVoteLists()"><span>불참 <b>${absent.length}</b> · 미투표 <b>${novote.length}</b></span>`
+      + (attOn ? '' : `<span class="vmore">${vOpen ? '접기' : '상세보기'}<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></span>`) + '</div>'
+      + (vOpen ? vgroup('불참', absent.map(p => `<span class="person absent" onclick="${tap(p.user_id, true)}">${esc(fmtName(p))}</span>`))
+        + vgroup('미투표', novote.map(u => `<span class="person novote" onclick="${tap(u.id, true)}">${esc(fmtName(u))}</span>`)) : '')
     : '';
   // 신청 대기 목록
   const pend = m.pending || [];
@@ -2101,6 +2110,7 @@ async function vote(attend){
   await openDetail(m.id, true, true);
 }
 // 출석 정리 (모임 당일부터, 관리 권한자): 실제 온 사람에 맞춰 참가 ↔ 불참. 정기 출석 통계에 쓰임
+function toggleVoteLists(){ const m = state.current; if (!m || state.attEdit === m.id) return; state.voteOpen = state.voteOpen === m.id ? null : m.id; renderDetail(); }
 function toggleAttEdit(){ const m = state.current; if (!m) return; state.attEdit = state.attEdit === m.id ? null : m.id; renderDetail(); }
 async function markAttendance(uid, attend){
   const m = state.current; if (!m) return;
