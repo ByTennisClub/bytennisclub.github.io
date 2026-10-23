@@ -2048,7 +2048,10 @@ function renderDetail(){
     : '<span class="muted">아직 없음</span>';
   const absent = m.absent || [];
   const voted = new Set([...m.participants, ...(m.pending || []), ...absent].map(p => p.user_id));
-  const novote = showVote ? (m.members || []).filter(u => !voted.has(u.id) && (u.created_at || '').slice(0, 10) <= m.date) : [];   // 모임 뒤에 가입한 사람은 빼고
+  // 미투표: 모임 날짜와 모임을 올린 때보다 모두 늦게 가입한 사람은 뺌 (지난 모임을 나중에 올린 경우 그때 회원은 보이게)
+  // 출석 정리 중엔 지금 회원 모두 (앱에 늦게 가입한 기존 회원도 출석을 넣을 수 있게)
+  const joinedLate = u => (u.created_at || '').slice(0, 10) > m.date && (u.created_at || '') > (m.created_at || '');
+  const novote = showVote ? (m.members || []).filter(u => !voted.has(u.id) && (attOn || !joinedLate(u))) : [];
   const vgroup = (t, arr) => arr.length ? `<div class="vgroup"><div class="vh">${t} ${arr.length}</div><div class="people">${arr.join('')}</div></div>` : '';
   $('voteLists').classList.toggle('hidden', !showVote);
   // 불참·미투표는 숫자만 보이고 '상세보기'를 누르면 이름 (출석 정리 중엔 펼친 채로)
