@@ -1388,6 +1388,9 @@ async function loadMonth(){
   if (error) showError(error); else $('banner').classList.add('hidden');
   if (seq !== monthSeq) return;   // 그 사이 다른 달로 넘겼으면 무시
   state.meetups = data || [];
+  // 선택한 날이 보고 있는 달 밖이면(달을 넘겼을 때) 이 달 안으로: 이번 달은 오늘, 아니면 첫 모임 날, 없으면 1일
+  const ym = `${state.year}-${String(state.month + 1).padStart(2, '0')}`;
+  if (!state.selected || state.selected.slice(0, 7) !== ym) state.selected = todayStr.slice(0, 7) === ym ? todayStr : ((state.meetups[0] && state.meetups[0].date) || ym + '-01');
   renderCalendar(); renderDayList();
 }
 function moveMonth(d){ const m = new Date(state.year, state.month + d, 1); state.year = m.getFullYear(); state.month = m.getMonth(); loadMonth(); }
