@@ -1965,7 +1965,7 @@ async function openDetail(id, pop, keepScroll){
   busy(true);
   const needMembers = !state.user.is_guest;   // 정기 모임 미투표 명단용
   const [, { data, error }, mem] = await Promise.all([loadSettings(), db.from('meetups').select('*, host:profiles!meetups_created_by_profile_fk(name,experience,gender,birth_year,role,show_crown), participants(*, profiles(name,experience,gender,birth_year,role,show_crown,is_guest)), matches(*)').eq('id', id).single(),
-    needMembers ? db.from('profiles').select('id,name,experience,gender,birth_year,role,show_crown,status,is_guest,created_at').eq('is_guest', false).neq('status', 'blocked') : null]);   // 이름 표시 방식(설정)도 함께
+    needMembers ? db.from('profiles').select('id,name,experience,gender,birth_year,role,show_crown,status,is_guest,created_at').eq('is_guest', false).neq('status', 'blocked').order('created_at') : null]);   // 미투표는 가입 순   // 이름 표시 방식(설정)도 함께
   busy(false);
   if (seq !== detailSeq) return;   // 그 사이 다른 모임을 눌렀으면 무시
   if (error && error.code !== 'PGRST116') return showError(error);
