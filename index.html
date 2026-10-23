@@ -215,6 +215,13 @@
   .voteBtns button.yes.on{background:var(--accent);border-color:var(--accent);color:#fff}
   .voteBtns button.no.on{background:#475569;border-color:#475569;color:#fff}
   .voteBtns button:disabled{opacity:.5;cursor:default}
+  /* 좁은 폰: 대진표 제목·버튼이 글자 중간에서 줄바뀜되지 않게, 넘치면 버튼 줄이 아래로 */
+  #bracketCard > .row:first-child{flex-wrap:wrap}
+  #bracketCard > .row:first-child strong,#bracketCtl button{white-space:nowrap}
+  /* iPhone: 입력 칸 글자가 16px 보다 작으면 누를 때 화면이 확대됨 → iOS 에서만 16px */
+  @supports (-webkit-touch-callout:none){input,select,textarea{font-size:16px!important}}
+  .tabs button{position:relative}
+  .tabs .tdot{position:absolute;top:8px;left:calc(50% + 7px);width:8px;height:8px;border-radius:50%;background:var(--accent);border:1.5px solid #fff}
   .vsum{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:0 0 10px;padding:9px 12px;background:var(--soft);border:1px solid var(--line);border-radius:10px;font-size:13px;color:var(--muted);cursor:pointer}
   .vsum b{color:var(--text)}
   .vsum .vmore{display:inline-flex;align-items:center;gap:2px;font-weight:700;color:var(--text);white-space:nowrap}
@@ -757,7 +764,7 @@
   <div class="in">
     <button data-view="home" onclick="showView('home')"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v9a2 2 0 0 1-2 2h-4v-6H9v6H5a2 2 0 0 1-2-2z"/></svg><span>홈</span></button>
     <button data-view="calendar" onclick="showView('calendar')"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg><span>달력</span></button>
-    <button data-view="admin" id="navAdmin" class="hidden" onclick="showView('admin')"><svg viewBox="0 0 24 24"><path d="M12 3l8 4v5c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V7z"/><path d="M9 12l2 2 4-4"/></svg><span>관리</span></button>
+    <button data-view="admin" id="navAdmin" class="hidden" onclick="showView('admin')"><svg viewBox="0 0 24 24"><path d="M12 3l8 4v5c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V7z"/><path d="M9 12l2 2 4-4"/></svg><span>관리</span><i class="tdot hidden" id="adminDot"></i></button>
     <button data-view="profile" onclick="openProfile()"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span>내 정보</span></button>
   </div>
 </nav>
@@ -1301,6 +1308,7 @@ async function loadAdmin(){
   const pend = data.filter(p => p.status === 'pending');
   const rest = data.filter(p => p.status !== 'pending');
   $('pendingCount').textContent = pend.length ? `${pend.length}명` : '';
+  $('adminDot').classList.toggle('hidden', !pend.length);
   $('ownerSettings').classList.toggle('hidden', !isOwner());
   $('pending').innerHTML = pend.map(p => memberRow(p,
       sb('승인', `setStatus('${p.id}','approved')`, 'primary') + sb('삭제', `deleteMember('${p.id}',${jsq(p.name)},true)`)
@@ -1550,7 +1558,7 @@ function renderUpcoming(){
       <div class="d"><b>${+d}</b><small>${+mo}월 ${dow}</small></div>
       <div class="t"><div class="title"><span class="badge ${kc(m.kind)}">${KINDS[m.kind]||''}</span>${esc(m.title)}</div>
         <div class="muted">${fmtTime(m.start_time)} · ${esc(m.location||'장소 미정')} · ${cnt(apCount(m), m.capacity)}</div></div>
-      ${mark}
+      ${(() => { const n = canManage(m) ? m.participants.filter(p => p.status === 'pending').length : 0; return n ? `<span class="joined" style="background:#fef3c7;color:#92400e">신청 ${n}</span>` : mark; })()}
     </div>`; }).join('') : `<div class="empty"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg><div>${f==='all' ? '다음 달까지 예정된 모임이 없어요' : `다음 달까지 예정된 ${KIND[f]}이 없어요`}</div></div>`;
 }
 function renderRules(){
@@ -1956,6 +1964,8 @@ async function loadHome(){
     <div class="tile"><b>${ups.length}</b><span>다가올 모임</span></div>
     ${state.user ? `<div class="tile"><b>${mine.length}</b><span>내 참가 예정</span></div>` : ''}`;
   state.ups = ups; renderUpcoming();
+  // 관리자: 가입 승인 대기가 있으면 관리 탭에 빨간 점
+  if (isAdmin()) db.from('profiles').select('id', { count: 'exact', head: true }).eq('status', 'pending').then(({ count }) => $('adminDot').classList.toggle('hidden', !count));
   const pasts = past.data || [];
   $('recentCount').textContent = pasts.length ? `최근 ${pasts.length}개` : '';
   const ro = localStorage.getItem('recentOpen') === '1';
@@ -2112,7 +2122,7 @@ function renderDetail(){
     ? (m.matches.length ? (m.kind==='regular' ? '점수는 주최자와 관리자가 입력합니다.' : '점수는 주최자가 입력합니다.') : (m.kind==='regular' ? '대진표는 주최자나 관리자가 만들면 여기에 표시됩니다.' : '대진표는 주최자가 만들면 여기에 표시됩니다.'))
     : names.length < 4
       ? '참가자가 4명 이상이면 복식 대진을 만들 수 있습니다.'
-      : (m.matches.length ? '선수와 코트를 직접 바꿀 수 있고 점수는 입력 즉시 저장됩니다. 자동 생성을 다시 누르면 기존 대진은 지워집니다.' : '라운드 수를 고르고 자동 생성을 누르거나, 아래에서 라운드를 추가해 직접 짜세요.');
+      : (m.matches.length ? '선수와 코트는 바꿀 수 있고, 점수는 넣으면 바로 저장돼요.' : '라운드 수를 고르고 자동 생성을 누르거나, 아래에서 라운드를 추가해 직접 짜세요.');
   renderBracket();
 }
 async function toggleJoin(){
