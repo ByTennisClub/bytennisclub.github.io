@@ -422,7 +422,7 @@
       <div id="voteLists" class="hidden"></div>
       <div class="voteBtns hidden" id="voteBtns"><button type="button" class="yes" id="voteYes" onclick="vote(true)">참가</button><button type="button" class="no" id="voteNo" onclick="vote(false)">불참</button></div>
       <button class="primary" id="joinBtn" style="width:100%;margin-top:4px" onclick="toggleJoin()">참가</button>
-      <p class="muted hidden" id="attHint" style="margin:10px 0 0">이름을 누르면 참가 ↔ 불참이 바뀌어요. 미투표인 사람은 누르면 참가로 들어가요.</p>
+      <p class="muted hidden" id="attHint" style="margin:10px 0 0">이름을 누를 때마다 참가 → 불참 → 미투표 → 참가 순으로 바뀌어요.</p>
       <button class="ghost hidden" id="attEditBtn" style="width:100%;margin-top:8px" onclick="toggleAttEdit()">출석 정리</button>
     </div>
     <div class="card" id="bracketCard">
@@ -2040,11 +2040,11 @@ function renderDetail(){
   $('pCount').textContent = m.capacity ? `${names.length}/${m.capacity}` : `${names.length}`;
   // 정기 모임: 회원 이상은 참가/불참 투표, 불참·미투표 명단도 봄 (게스트는 지금처럼 참가 신청만)
   const reg = m.kind === 'regular', showVote = reg && !!state.user && !state.user.is_guest;
-  const attOn = reg && manage && m.date <= todayStr && state.attEdit === m.id;   // 출석 정리 중: 이름을 누르면 참가 ↔ 불참
-  const tap = (uid, toAttend) => attOn ? `markAttendance('${uid}',${toAttend})` : `openMember('${uid}')`;
+  const attOn = reg && manage && m.date <= todayStr && state.attEdit === m.id;   // 출석 정리 중: 누를 때마다 참가 → 불참 → 미투표
+  const tap = (uid, next) => attOn ? `markAttendance('${uid}','${next}')` : `openMember('${uid}')`;
   $('people').closest('.card').classList.toggle('attEdit', attOn);
   $('people').innerHTML = m.participants.length
-    ? m.participants.map(p=>`<span class="person ${p.user_id===m.created_by_id?'host':(p.user_id===myId()?'me':'')}" onclick="${tap(p.user_id, false)}">${esc(fmtName(p))}${p.profiles?.is_guest ? '<span class="g">게스트</span>' : ''}${manage && !attOn && p.user_id!==myId() ? `<span class="x" title="참가 취소시키기" onclick="event.stopPropagation();removeParticipant('${p.id}',${jsq(p.profiles?.name || p.name)})">&times;</span>` : ''}</span>`).join('')
+    ? m.participants.map(p=>`<span class="person ${p.user_id===m.created_by_id?'host':(p.user_id===myId()?'me':'')}" onclick="${tap(p.user_id, 'absent')}">${esc(fmtName(p))}${p.profiles?.is_guest ? '<span class="g">게스트</span>' : ''}${manage && !attOn && p.user_id!==myId() ? `<span class="x" title="참가 취소시키기" onclick="event.stopPropagation();removeParticipant('${p.id}',${jsq(p.profiles?.name || p.name)})">&times;</span>` : ''}</span>`).join('')
     : '<span class="muted">아직 없음</span>';
   const absent = m.absent || [];
   const voted = new Set([...m.participants, ...(m.pending || []), ...absent].map(p => p.user_id));
@@ -2059,8 +2059,8 @@ function renderDetail(){
   $('voteLists').innerHTML = showVote && (absent.length || novote.length)
     ? `<div class="vsum${vOpen ? ' open' : ''}" onclick="toggleVoteLists()"><span>불참 <b>${absent.length}</b> · 미투표 <b>${novote.length}</b></span>`
       + (attOn ? '' : `<span class="vmore">${vOpen ? '접기' : '상세보기'}<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></span>`) + '</div>'
-      + (vOpen ? vgroup('불참', absent.map(p => `<span class="person absent" onclick="${tap(p.user_id, true)}">${esc(fmtName(p))}</span>`))
-        + vgroup('미투표', novote.map(u => `<span class="person novote" onclick="${tap(u.id, true)}">${esc(fmtName(u))}</span>`)) : '')
+      + (vOpen ? vgroup('불참', absent.map(p => `<span class="person absent" onclick="${tap(p.user_id, 'none')}">${esc(fmtName(p))}</span>`))
+        + vgroup('미투표', novote.map(u => `<span class="person novote" onclick="${tap(u.id, 'approved')}">${esc(fmtName(u))}</span>`)) : '')
     : '';
   // 신청 대기 목록
   const pend = m.pending || [];
@@ -2131,6 +2131,12 @@ async function vote(attend){
   const m = state.current; if (!m || !state.user) return;
   if (m.date < todayStr) return toast('지난 모임은 투표할 수 없어요');
   const mine = [...m.participants, ...(m.pending || []), ...(m.absent || [])].find(p => p.user_id === myId());
+  // 이미 투표했으면(참가·신청 중·불참) 바꾸거나 취소하기 전에 확인. 미투표에서 고를 땐 바로
+  if (mine){
+    const now = mine.status === 'absent' ? '불참' : mine.status === 'pending' ? '참가 신청' : '참가';
+    const same = (mine.status !== 'absent') === attend;
+    if (!confirm(same ? `${now} 투표를 취소할까요?\n미투표 상태로 돌아가요.` : `${now}에서 ${attend ? '참가로' : '불참으로'} 바꿀까요?`)) return;
+  }
   if (mine && (mine.status !== 'absent') === attend){
     const { error } = await db.from('participants').delete().eq('id', mine.id);
     if (error) return showError(error);
@@ -2147,14 +2153,23 @@ async function vote(attend){
   }
   await openDetail(m.id, true, true);
 }
-// 출석 정리 (모임 당일부터, 관리 권한자): 실제 온 사람에 맞춰 참가 ↔ 불참. 정기 출석 통계에 쓰임
+// 출석 정리 (모임 당일부터, 관리 권한자): 실제 온 사람에 맞춰 참가 → 불참 → 미투표. 정기 출석 통계에 쓰임
 function toggleVoteLists(){ const m = state.current; if (!m || state.attEdit === m.id) return; state.voteOpen = state.voteOpen === m.id ? null : m.id; renderDetail(); }
 function toggleAttEdit(){ const m = state.current; if (!m) return; state.attEdit = state.attEdit === m.id ? null : m.id; renderDetail(); }
-async function markAttendance(uid, attend){
+async function markAttendance(uid, next){
   const m = state.current; if (!m) return;
-  const { error } = await db.rpc('mark_attendance', { mid: m.id, target: uid, attend });
-  if (error) return /mark_attendance/.test(error.message) ? toast('관리자가 SQL 34단계를 실행하면 쓸 수 있어요') : showError(error);
-  toast(attend ? '참가로 바꿨어요' : '불참으로 바꿨어요');
+  if (next === 'none'){   // 미투표로: 기록을 지움
+    const row = [...m.participants, ...(m.pending || []), ...(m.absent || [])].find(p => p.user_id === uid);
+    if (row){
+      const { data, error } = await db.from('participants').delete().eq('id', row.id).select('id');
+      if (error) return showError(error);
+      if (!data || !data.length) return toast('바꿀 권한이 없어요');
+    }
+  } else {
+    const { error } = await db.rpc('mark_attendance', { mid: m.id, target: uid, attend: next === 'approved' });
+    if (error) return /mark_attendance/.test(error.message) ? toast('관리자가 SQL 34단계를 실행하면 쓸 수 있어요') : showError(error);
+  }
+  toast({ approved: '참가로 바꿨어요', absent: '불참으로 바꿨어요', none: '미투표로 바꿨어요' }[next]);
   await openDetail(m.id, true, true);
 }
 function joinAfterLogin(){
