@@ -351,7 +351,7 @@
     <div class="notice hidden" id="profileNotice" onclick="openProfile()"><span>프로필을 완성해 주세요 (전화번호·구력·성별·생년)</span><span>›</span></div>
     <div class="tiles" id="tiles"></div>
     <div class="card">
-      <div class="row"><strong>다가오는 모임</strong><button class="primary createBtn" onclick="openCreate()">+ 모임 만들기</button></div>
+      <div class="row"><strong>다가올 모임</strong><button class="primary createBtn" onclick="openCreate()">+ 모임 만들기</button></div>
       <div class="seg" id="upFilter" style="margin-top:10px">
         <button data-v="all" onclick="setUpFilter('all')">전체</button>
         <button data-v="regular" onclick="setUpFilter('regular')">정기</button>
@@ -473,11 +473,6 @@
   <!-- 관리자 페이지 -->
   <section id="viewAdmin" class="hidden">
     <div class="card">
-      <div class="row"><strong>클럽 페이지 공유</strong><button class="shareMini" onclick="shareClub()"><svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.8 1.9 5.3 4.7 6.7L5.6 21.5c-.1.3.2.5.5.3l4.6-3.1c.4 0 .8.1 1.3.1 5.5 0 10-3.6 10-8S17.5 3 12 3z"/></svg>카톡 공유</button></div>
-      <div class="muted">클럽 페이지를 카톡 카드로 보내요. 문구는 고쳐서 보낼 수 있어요. (관리자만)</div>
-      <textarea id="fPromo" maxlength="200" style="margin-top:8px;min-height:64px;font-size:14px" placeholder="카드에 들어갈 문구"></textarea>
-    </div>
-    <div class="card">
       <div class="row"><strong>승인 대기 <span class="muted" id="pendingCount" style="font-weight:500"></span></strong><button class="ghost" style="min-height:32px;padding:4px 10px;font-size:13px" onclick="loadAdmin()">새로고침</button></div>
       <div class="muted">새로 가입한 계정입니다. 승인하면 게스트로 모임에 참가할 수 있고, 회원 목록에서 "회원으로" 올리면 자유 모임도 만들 수 있습니다.</div>
       <div id="pending" style="margin-top:6px"></div>
@@ -542,6 +537,11 @@
         </div>
       </div>
     </div>
+    <div class="card">
+      <div class="row"><strong>클럽 페이지 공유</strong><button class="shareMini" onclick="shareClub()"><svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.8 1.9 5.3 4.7 6.7L5.6 21.5c-.1.3.2.5.5.3l4.6-3.1c.4 0 .8.1 1.3.1 5.5 0 10-3.6 10-8S17.5 3 12 3z"/></svg>카톡 공유</button></div>
+      <div class="muted">클럽 페이지를 카톡 카드로 보내요. 문구는 고쳐서 보낼 수 있어요. (관리자만)</div>
+      <textarea id="fPromo" maxlength="200" style="margin-top:8px;min-height:64px;font-size:14px" placeholder="카드에 들어갈 문구"></textarea>
+    </div>
   </section>
 </main>
 
@@ -549,10 +549,10 @@
 <div class="modal" id="createModal" onclick="if(event.target===this&&bdDown===this)closeCreate()">
   <div class="sheet">
     <div class="row"><strong id="createTitle">모임 만들기</strong><button class="icon" onclick="closeCreate()">&times;</button></div>
-    <label>종류</label>
+    <div id="kindRow"><label>종류</label>
     <select id="fKind"></select>
-    <div class="muted" id="kindHint"></div>
-    <label>제목</label>
+    <div class="muted" id="kindHint"></div></div>
+    <label>제목 <span style="color:var(--accent)">*</span></label>
     <input id="fTitle" placeholder="예: 토요일 아침 모임">
     <div class="two">
       <div><label>날짜</label><input id="fDate" type="date"></div>
@@ -590,10 +590,10 @@
   <div class="sheet" style="text-align:center">
     <img src="icon-192.png" alt="" style="width:72px;height:72px;border-radius:50%">
     <div style="font-weight:700;font-size:17px;margin-top:8px">로그인이 필요합니다</div>
-    <p class="muted" style="margin:6px 0 0">모임 일정 보기와 참가 신청은 로그인 후 이용할 수 있어요.<br>처음이면 게스트로 가입한 뒤 관리자 승인을 받으면 참가할 수 있어요.</p>
+    <p class="muted" style="margin:6px 0 0">모임 일정과 참가 신청은 로그인 후 이용할 수 있어요.<br>처음이면 가입한 뒤 관리자 승인을 받으면 참가할 수 있어요.</p>
     <button class="kakao" onclick="loginKakao()"><svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.8 1.9 5.3 4.7 6.7L5.6 21.5c-.1.3.2.5.5.3l4.6-3.1c.4 0 .8.1 1.3.1 5.5 0 10-3.6 10-8S17.5 3 12 3z"/></svg>카카오로 로그인</button>
     <button class="linkBtn" id="kakaoOtherBtn" style="margin-top:6px" onclick="loginKakao(true)">다른 카카오 계정으로 로그인</button>
-    <button class="ghost" style="width:100%;margin-top:8px" onclick="openGuest()">게스트로 참여 (이름 + 전화번호)</button>
+    <button class="ghost" style="width:100%;margin-top:8px" onclick="openGuest()">이름 + 전화번호로 로그인 · 가입</button>
     <div style="margin-top:10px"><button class="back" style="margin:0" onclick="closeLogin()">나중에</button></div>
   </div>
 </div>
@@ -676,13 +676,13 @@
 <!-- 게스트 등록/로그인 -->
 <div class="modal" id="guestModal" onclick="if(event.target===this&&bdDown===this)closeGuest()">
   <div class="sheet">
-    <div class="row"><strong>게스트로 참여</strong><button class="icon" onclick="closeGuest()">&times;</button></div>
-    <p class="muted" style="margin:4px 0 0">카카오 계정 없이 참여할 때 씁니다. 다시 로그인할 때는 <b>현재 닉네임</b>과 <b>현재 전화번호</b>를 넣으세요. 내 정보에서 바꿨다면 바뀐 값으로 들어옵니다. 전화번호는 관리자에게만 보입니다.</p>
+    <div class="row"><strong>이름 + 전화번호로 로그인</strong><button class="icon" onclick="closeGuest()">&times;</button></div>
+    <p class="muted" style="margin:4px 0 0">처음이면 가입 신청이 되고, 전에 가입했다면 바로 로그인돼요. 내 정보에서 닉네임이나 번호를 바꿨다면 <b>바뀐 값</b>으로 넣어 주세요.</p>
     <label>이름</label>
     <input id="gName" maxlength="20" placeholder="예: 홍길동" autocomplete="name">
     <label>전화번호</label>
     <input id="gPhone" inputmode="numeric" placeholder="010-0000-0000" autocomplete="tel" maxlength="13" oninput="maskPhone(this)" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229)guestAuth()">
-    <button class="primary" style="width:100%;margin-top:16px" onclick="guestAuth()">등록 또는 로그인</button>
+    <button class="primary" style="width:100%;margin-top:16px" onclick="guestAuth()">로그인 · 가입</button>
   </div>
 </div>
 
@@ -693,7 +693,7 @@
     <button class="linkBtn hidden" id="claimLink" onclick="showClaim()">관리자 인증</button>
     <p class="muted hidden" id="profileIntro" style="margin:4px 0 0">대진을 짤 때 참고합니다. 나중에 내 정보에서 바꿀 수 있어요.</p>
     <div style="display:flex;align-items:center;gap:12px;margin-top:10px">
-      <img id="pAvatar" class="avatar-lg" src="" alt="" onerror="this.style.visibility='hidden'">
+      <img id="pAvatar" class="avatar-lg" src="" alt="" onerror="this.style.display='none'">
       <div style="flex:1;min-height:56px;cursor:default;-webkit-tap-highlight-color:transparent;user-select:none" onclick="secretTap()"><div id="pName" style="font-weight:700;font-size:16px"></div><div id="pRole" class="muted"></div></div>
     </div>
     <label>닉네임</label>
@@ -944,7 +944,8 @@ function handleAuthReturn(){
 }
 function maybeOnboard(){
   if (!state.user || complete(state.user)) return;
-  if (sessionStorage.getItem('onboardSkipped')) return;
+  const k = 'onboardAsked:' + state.user.id;
+  try { if (Date.now() - (+localStorage.getItem(k) || 0) < 14 * 864e5) return; localStorage.setItem(k, Date.now()); } catch {}
   openProfile(true);
 }
 async function setUser(u){
@@ -1148,7 +1149,7 @@ async function guestAuth(){
 function openProfile(onboard){
   if (!requireLogin()) return;
   const u = state.user;
-  $('pAvatar').src = https(u.avatar_url); $('pAvatar').style.visibility = u.avatar_url ? 'visible' : 'hidden';
+  $('pAvatar').src = https(u.avatar_url); $('pAvatar').style.display = u.avatar_url ? '' : 'none';
   $('pName').textContent = u.name;
   $('pRole').textContent = isOwner() ? '대표 ★' : isAdmin() ? '관리자' : (u.is_guest ? '게스트' : '회원');
   $('claimLink').textContent = isAdmin() ? '대표 인증' : '관리자 인증';
@@ -1169,7 +1170,7 @@ function openProfile(onboard){
   $('profileIntro').classList.toggle('hidden', !onboard);
   const left = $('profileLeft');
   left.classList.toggle('hidden', !onboard);
-  left.onclick = () => { sessionStorage.setItem('onboardSkipped','1'); closeProfile(); };
+  left.onclick = () => closeProfile();
   $('acctBox').classList.toggle('hidden', !!onboard);
   $('resignRow').classList.toggle('hidden', !(isAdmin() && !isOwner()));
   const sv = localStorage.getItem('startView') || 'home';
@@ -1426,6 +1427,7 @@ async function openCreate(){
   if (!(await requireApproved())) return;
   if (state.user.is_guest) return toast('모임 만들기는 회원만 할 수 있어요');
   const kinds = isAdmin() ? ['flash','regular'] : ['flash'];
+  $('kindRow').classList.toggle('hidden', kinds.length < 2);   // 자유 모임만 만들 수 있으면 고를 게 없음
   $('fKind').innerHTML = kinds.map(k => `<option value="${k}">${KIND[k]}</option>`).join('');
   $('kindHint').textContent = isAdmin() ? '' : `${KIND.regular}은 관리자만 만들 수 있어요.`;
   resetCreateForm();
@@ -1456,6 +1458,7 @@ function openEdit(){
   if (m.kind === 'regular' && !isAdmin()) return toast(`${KIND.regular}은 관리자만 수정할 수 있어요`);
   if (!canManage(m)) return toast(m.kind === 'regular' ? `${KIND.regular}은 관리자만 수정할 수 있어요` : `${KIND.flash}은 만든 사람만 수정할 수 있어요`);
   const kinds = isAdmin() ? ['flash','regular'] : ['flash'];
+  $('kindRow').classList.toggle('hidden', kinds.length < 2);   // 자유 모임만 만들 수 있으면 고를 게 없음
   $('fKind').innerHTML = kinds.map(k => `<option value="${k}" ${k===m.kind?'selected':''}>${KIND[k]}</option>`).join('');
   $('kindHint').textContent = '';
   $('fTitle').value = m.title; $('fDate').value = m.date; $('fTime').value = m.start_time ? m.start_time.slice(0,5) : '';
@@ -2031,7 +2034,7 @@ function renderDetail(){
       <div><span>일시</span><b>${fmtDate(m.date)} ${fmtTime(m.start_time)}</b></div>
       <div><span>장소</span><b>${esc(m.location||'미정')}</b></div>
       <div><span>코트</span><b>${m.courts ? m.courts+'면' : '미정'} <span class="muted" style="font-weight:400">· 정원 ${capText(m.capacity)}</span></b></div>
-      <div><span>참가</span><b>${m.join_mode === 'approve' ? '신청 후 승인' : '자동 승인'}</b></div>
+      <div><span>참가</span><b>${m.kind === 'regular' ? '참가/불참 투표' + (m.join_mode === 'approve' ? ' · 신청 후 승인' : '') : (m.join_mode === 'approve' ? '신청 후 승인' : '자동 승인')}</b></div>
       <div><span>주최</span><b>${m.host ? esc(fmtName(m.host)) : `${esc(m.created_by || '-')} <span class="muted" style="font-weight:400">(나간 회원 · 관리자가 관리)</span>`}</b></div>
       ${m.note?`<div><span>메모</span><b style="white-space:pre-wrap;font-weight:400">${esc(m.note)}</b></div>`:''}
     </div>`;
@@ -2099,7 +2102,7 @@ function renderDetail(){
   $('resetBtn').classList.toggle('hidden', !manage || !m.matches.length);
   // 대진표 켬/끔 (모임마다 주최자가 정함): 꺼지면 참가자에겐 카드째 숨기고 관리하는 사람에겐 스위치만. 33단계 전엔 항상 켬
   const bOn = m.bracket !== false;
-  $('bracketCard').classList.toggle('hidden', !bOn && !manage);
+  $('bracketCard').classList.toggle('hidden', (!bOn || !m.matches.length) && !manage);   // 참가자에겐 대진이 생긴 뒤에만
   $('bracketSwRow').classList.toggle('hidden', !manage || !('bracket' in m));
   document.querySelectorAll('#bracketSeg button').forEach(b => b.classList.toggle('active', b.dataset.v === (bOn ? 'on' : 'off')));
   $('bracketSwHint').textContent = bOn ? '끄면 참가자 화면에서 대진표가 안 보여요' : ('참가자에게 대진표가 안 보여요' + (m.matches.length ? ' · 만든 대진은 남아 있어요' : ''));
@@ -2118,6 +2121,7 @@ async function toggleJoin(){
   if (m.date < todayStr) return toast('지난 모임은 참가하거나 취소할 수 없어요');
   const mine = m.participants.find(p=>p.user_id===myId()) || (m.pending||[]).find(p=>p.user_id===myId());
   if (!mine && !(await requireApproved())) return;
+  if (mine && !confirm(mine.status === 'pending' ? '참가 신청을 취소할까요?' : '참가를 취소할까요?')) return;
   const { error } = mine
     ? await db.from('participants').delete().eq('id', mine.id)
     : await db.from('participants').insert({ meetup_id: m.id, user_id: myId(), name: state.user.name });
