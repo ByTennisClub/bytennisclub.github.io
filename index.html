@@ -209,6 +209,17 @@
   .person.host .x{color:#fff;opacity:.8}
   .person .x{margin-left:6px;cursor:pointer;opacity:.5;font-weight:700;font-size:15px;line-height:1}
   .person .x:hover{opacity:1}
+  .voteBtns{display:flex;gap:8px;margin-top:4px}
+  .voteBtns button{flex:1;min-height:46px;border-radius:12px;font-weight:700;font-size:15px;border:1.5px solid var(--line);background:#fff;color:var(--text);cursor:pointer}
+  .voteBtns button.yes.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  .voteBtns button.no.on{background:#475569;border-color:#475569;color:#fff}
+  .voteBtns button:disabled{opacity:.5;cursor:default}
+  .vgroup{margin:0 0 10px}
+  .vgroup .vh{font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px}
+  .vgroup .people{margin:0}
+  .person.absent{background:#fff;color:var(--muted)}
+  .person.novote{background:#fff;border-style:dashed;color:var(--muted)}
+  .attEdit .person{box-shadow:0 0 0 2px #fcd34d}
   /* bracket */
   .round{margin-top:14px;background:var(--soft);border:1px solid var(--line);border-radius:14px;padding:10px}
   .round .rhdr{display:flex;align-items:center;justify-content:space-between;margin:-10px -10px 10px;padding:9px 12px;background:var(--accent);color:#fff;border-radius:13px 13px 0 0;font-weight:800;font-size:14px}
@@ -402,7 +413,11 @@
         <div style="font-size:13px;font-weight:700;color:#92400e">신청 대기 <span id="pendCount"></span></div>
         <div id="pendingList" style="margin-top:6px"></div>
       </div>
+      <div id="voteLists" class="hidden"></div>
+      <div class="voteBtns hidden" id="voteBtns"><button type="button" class="yes" id="voteYes" onclick="vote(true)">참가</button><button type="button" class="no" id="voteNo" onclick="vote(false)">불참</button></div>
       <button class="primary" id="joinBtn" style="width:100%;margin-top:4px" onclick="toggleJoin()">참가</button>
+      <p class="muted hidden" id="attHint" style="margin:10px 0 0">이름을 누르면 참가 ↔ 불참이 바뀌어요. 미투표인 사람은 누르면 참가로 들어가요.</p>
+      <button class="ghost hidden" id="attEditBtn" style="width:100%;margin-top:8px" onclick="toggleAttEdit()">출석 정리</button>
     </div>
     <div class="card" id="bracketCard">
       <div class="row"><strong>대진표</strong>
@@ -1226,11 +1241,11 @@ async function saveProfile(){
   toast(credChanged ? '저장했어요. 다음 로그인부터 바뀐 닉네임과 번호로 들어오세요' : '저장했습니다');
 }
 let phones = {};
-let joins = {};   // user_id -> {total, upcoming}
+let joins = {};   // user_id -> {total, upcoming, reg(지난 정기 모임 출석)}
 function memberRow(p, actions){
   const j = joins[p.id] || { total: 0, upcoming: 0 };
   const info = ([EXP[p.experience], GENDER[p.gender], born(p.birth_year), phones[p.id] ? fmtPhone(phones[p.id]) : ''].filter(Boolean).join(' · ') || '프로필 미입력')
-    + ` · 참가 ${j.total}회` + (j.upcoming ? ` (예정 ${j.upcoming})` : '');
+    + ` · 참가 ${j.total}회` + (j.upcoming ? ` (예정 ${j.upcoming})` : '') + (j.reg ? ` · ${KIND.regular} 출석 ${j.reg}회` : '');
   const tags = (p.role==='owner' ? '<span class="adminBadge">대표 ★</span>' : p.role==='admin' ? '<span class="adminBadge" style="background:var(--soft);color:var(--muted)">관리자</span>' : '')
     + (p.is_guest ? '<span class="adminBadge" style="background:#e0f2fe;color:#075985">게스트</span>' : (p.role==='member' ? '<span class="adminBadge" style="background:#dcfce7;color:#166534">회원</span>' : ''))
     + (p.status==='blocked' ? '<span class="adminBadge" style="background:#fee2e2;color:#991b1b">휴식</span>' : '');
@@ -1256,12 +1271,17 @@ async function loadAdmin(){
   const [{ data, error }, pv, pj] = await Promise.all([
     db.from('profiles').select('*').order('created_at'),
     db.from('profile_private').select('id,phone'),
-    db.from('participants').select('user_id, meetups(date)')
+    db.from('participants').select('user_id, status, meetups(date,kind)')
   ]);
   if (error) return showError(error);
   phones = Object.fromEntries((pv.data||[]).map(r => [r.id, r.phone]));
   joins = {};
-  (pj.data||[]).forEach(r => { if (!r.user_id) return; const j = joins[r.user_id] || (joins[r.user_id] = {total:0, upcoming:0}); j.total++; if (r.meetups && r.meetups.date >= todayStr) j.upcoming++; });
+  (pj.data||[]).forEach(r => {
+    if (!r.user_id || r.status === 'absent') return;
+    const j = joins[r.user_id] || (joins[r.user_id] = {total:0, upcoming:0, reg:0}); j.total++;
+    if (r.meetups && r.meetups.date >= todayStr) j.upcoming++;
+    else if (r.meetups && r.meetups.kind === 'regular' && r.status === 'approved') j.reg++;   // 지난 정기 모임 출석
+  });
   const pend = data.filter(p => p.status === 'pending');
   const rest = data.filter(p => p.status !== 'pending');
   $('pendingCount').textContent = pend.length ? `${pend.length}명` : '';
@@ -1405,7 +1425,8 @@ function setJoinMode(v){
   document.querySelectorAll('#joinSeg button').forEach(b => b.classList.toggle('active', b.dataset.v === v));
   $('joinHint').textContent = v === 'approve' ? '주최자 외에는 관리자도 신청 후 승인을 거칩니다. 게스트는 항상 신청 후 승인입니다.' : '회원은 누르는 즉시 참가됩니다. 게스트는 항상 신청 후 승인입니다.';
 }
-const apCount = m => (m.participants || []).filter(p => p.status !== 'pending').length;
+const apCount = m => (m.participants || []).filter(p => p.status === 'approved').length;   // 대기·불참 빼고
+const myStatus = m => ((m.participants || []).find(p => p.user_id === myId()) || {}).status || null;   // approved | pending | absent | null
 function setCap(v){
   document.querySelectorAll('#capSeg button').forEach(b => b.classList.toggle('active', b.dataset.v === v));
   $('fCapacity').classList.toggle('hidden', v !== 'limit');
@@ -1503,13 +1524,15 @@ function renderUpcoming(){
     const [,mo,d] = m.date.split('-');
     const monthHead = m.date.slice(0, 7) !== thisMo && (i === 0 || list[i-1].date.slice(0, 7) !== m.date.slice(0, 7)) ? `<div class="upMonth">${+mo}월</div>` : '';   // 다음 달 모임 앞에 구분
     const dow = DOW[new Date(m.date+'T00:00').getDay()];
-    const me = m.participants.find(p=>p.user_id===myId());
-    const joined = !!me && me.status !== 'pending';
+    const ms = myStatus(m);
+    const mark = ms === 'approved' ? '<span class="joined">참가중</span>' : ms === 'pending' ? '<span class="joined" style="background:#fef3c7;color:#92400e">신청 중</span>'
+      : ms === 'absent' ? '<span class="joined" style="background:var(--soft);color:var(--muted)">불참</span>'
+      : m.kind === 'regular' && state.user && !state.user.is_guest ? '<span class="joined" style="background:#fff;border:1px dashed var(--muted);color:var(--muted)">투표 전</span>' : '';
     return `${monthHead}<div class="up" onclick="openDetail('${m.id}')">
       <div class="d"><b>${+d}</b><small>${+mo}월 ${dow}</small></div>
       <div class="t"><div class="title"><span class="badge ${kc(m.kind)}">${KINDS[m.kind]||''}</span>${esc(m.title)}</div>
         <div class="muted">${fmtTime(m.start_time)} · ${esc(m.location||'장소 미정')} · ${cnt(apCount(m), m.capacity)}</div></div>
-      ${joined?'<span class="joined">참가중</span>':(me?'<span class="joined" style="background:#fef3c7;color:#92400e">신청 중</span>':'')}
+      ${mark}
     </div>`; }).join('') : `<div class="empty"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg><div>${f==='all' ? '다음 달까지 예정된 모임이 없어요' : `다음 달까지 예정된 ${KIND[f]}이 없어요`}</div></div>`;
 }
 function renderRules(){
@@ -1686,7 +1709,7 @@ async function shareMeetup(){
           imageUrl: `${SITE_URL}logo.png`,
           link: { mobileWebUrl: url, webUrl: url }
         },
-        buttons: [{ title: m.join_mode === 'approve' ? '참가 신청하기' : '참가하기', link: { mobileWebUrl: url, webUrl: url } }]
+        buttons: [{ title: m.kind === 'regular' ? '참가/불참 투표하기' : m.join_mode === 'approve' ? '참가 신청하기' : '참가하기', link: { mobileWebUrl: url, webUrl: url } }]
       });
       return;
     } catch (e) { console.warn('kakao share', e); }
@@ -1874,14 +1897,14 @@ async function loadHome(){
   const err = up.error || past.error;
   if (err) showError(err); else $('banner').classList.add('hidden');
   const ups = up.data || [];
-  const mine = ups.filter(m => m.participants.some(p=>p.user_id===myId() && p.status!=='pending'));
+  const mine = ups.filter(m => myStatus(m) === 'approved');
   const next = ups[0];
   $('hero').innerHTML = `<div class="hello">${state.user ? esc(state.user.name)+'님, 안녕하세요 👋' : CLUB_NAME+'에 오신 것을 환영합니다'}</div>` + (next
     ? `<div class="next" onclick="openDetail('${next.id}')">
         <div class="lbl">다음 모임 · ${dday(next.date)}</div>
         <div class="ttl">${esc(next.title)}</div>
         <div class="sub">${fmtDate(next.date)} ${fmtTime(next.start_time)} · ${esc(next.location||'장소 미정')}</div>
-        <span class="cnt">${cnt(apCount(next), next.capacity)} 참가${next.participants.some(p=>p.user_id===myId() && p.status!=='pending')?' · 참가중':next.participants.some(p=>p.user_id===myId())?' · 신청 중':''}</span>
+        <span class="cnt">${cnt(apCount(next), next.capacity)} 참가${{approved:' · 참가중', pending:' · 신청 중', absent:' · 불참'}[myStatus(next)] || (next.kind === 'regular' && state.user && !state.user.is_guest ? ' · 투표 전' : '')}</span>
       </div>`
     : `<div class="next empty"><div class="ttl">예정된 모임이 없어요</div><div class="sub">${state.user && state.user.is_guest ? '새 모임이 생기면 여기에 보여요' : '모임을 만들어 사람들을 모아 보세요'}</div></div>`);
   $('tiles').classList.toggle('two', !state.user);
@@ -1935,7 +1958,9 @@ async function openDetail(id, pop, keepScroll){
   }
   const seq = ++detailSeq;
   busy(true);
-  const [, { data, error }] = await Promise.all([loadSettings(), db.from('meetups').select('*, host:profiles!meetups_created_by_profile_fk(name,experience,gender,birth_year,role,show_crown), participants(*, profiles(name,experience,gender,birth_year,role,show_crown,is_guest)), matches(*)').eq('id', id).single()]);   // 이름 표시 방식(설정)도 함께
+  const needMembers = !state.user.is_guest;   // 정기 모임 미투표 명단용
+  const [, { data, error }, mem] = await Promise.all([loadSettings(), db.from('meetups').select('*, host:profiles!meetups_created_by_profile_fk(name,experience,gender,birth_year,role,show_crown), participants(*, profiles(name,experience,gender,birth_year,role,show_crown,is_guest)), matches(*)').eq('id', id).single(),
+    needMembers ? db.from('profiles').select('id,name,experience,gender,birth_year,role,show_crown,status,is_guest,created_at').eq('is_guest', false).neq('status', 'blocked') : null]);   // 이름 표시 방식(설정)도 함께
   busy(false);
   if (seq !== detailSeq) return;   // 그 사이 다른 모임을 눌렀으면 무시
   if (error && error.code !== 'PGRST116') return showError(error);
@@ -1947,7 +1972,10 @@ async function openDetail(id, pop, keepScroll){
   }
   data.participants.sort((a,b)=>a.created_at.localeCompare(b.created_at));
   data.pending = data.participants.filter(p => p.status === 'pending');
-  data.participants = data.participants.filter(p => p.status !== 'pending');
+  data.absent = data.participants.filter(p => p.status === 'absent');   // 정기 모임 불참
+  data.participants = data.participants.filter(p => p.status === 'approved');
+  data.members = ((mem && mem.data) || []).filter(u => u.status === 'approved' || u.role !== 'member');
+  if (state.attEdit !== id) state.attEdit = null;
   data.matches.sort((a,b)=>a.round-b.round || a.court-b.court);
   showView('detail', { pop, keepScroll });
   history.replaceState(Object.assign({}, history.state, { view: 'detail', id }), '');
@@ -1970,9 +1998,23 @@ function renderDetail(){
   const names = m.participants.map(p=>p.name);
   const manage = canManage(m);
   $('pCount').textContent = m.capacity ? `${names.length}/${m.capacity}` : `${names.length}`;
+  // 정기 모임: 회원 이상은 참가/불참 투표, 불참·미투표 명단도 봄 (게스트는 지금처럼 참가 신청만)
+  const reg = m.kind === 'regular', showVote = reg && !!state.user && !state.user.is_guest;
+  const attOn = reg && manage && m.date <= todayStr && state.attEdit === m.id;   // 출석 정리 중: 이름을 누르면 참가 ↔ 불참
+  const tap = (uid, toAttend) => attOn ? `markAttendance('${uid}',${toAttend})` : `openMember('${uid}')`;
+  $('people').closest('.card').classList.toggle('attEdit', attOn);
   $('people').innerHTML = m.participants.length
-    ? m.participants.map(p=>`<span class="person ${p.user_id===m.created_by_id?'host':(p.user_id===myId()?'me':'')}" onclick="openMember('${p.user_id}')">${esc(fmtName(p))}${p.profiles?.is_guest ? '<span class="g">게스트</span>' : ''}${manage && p.user_id!==myId() ? `<span class="x" title="참가 취소시키기" onclick="event.stopPropagation();removeParticipant('${p.id}',${jsq(p.profiles?.name || p.name)})">&times;</span>` : ''}</span>`).join('')
+    ? m.participants.map(p=>`<span class="person ${p.user_id===m.created_by_id?'host':(p.user_id===myId()?'me':'')}" onclick="${tap(p.user_id, false)}">${esc(fmtName(p))}${p.profiles?.is_guest ? '<span class="g">게스트</span>' : ''}${manage && !attOn && p.user_id!==myId() ? `<span class="x" title="참가 취소시키기" onclick="event.stopPropagation();removeParticipant('${p.id}',${jsq(p.profiles?.name || p.name)})">&times;</span>` : ''}</span>`).join('')
     : '<span class="muted">아직 없음</span>';
+  const absent = m.absent || [];
+  const voted = new Set([...m.participants, ...(m.pending || []), ...absent].map(p => p.user_id));
+  const novote = showVote ? (m.members || []).filter(u => !voted.has(u.id) && (u.created_at || '').slice(0, 10) <= m.date) : [];   // 모임 뒤에 가입한 사람은 빼고
+  const vgroup = (t, arr) => arr.length ? `<div class="vgroup"><div class="vh">${t} ${arr.length}</div><div class="people">${arr.join('')}</div></div>` : '';
+  $('voteLists').classList.toggle('hidden', !showVote);
+  $('voteLists').innerHTML = showVote
+    ? vgroup('불참', absent.map(p => `<span class="person absent" onclick="${tap(p.user_id, true)}">${esc(fmtName(p))}</span>`))
+      + vgroup('미투표', novote.map(u => `<span class="person novote" onclick="${tap(u.id, true)}">${esc(fmtName(u))}</span>`))
+    : '';
   // 신청 대기 목록
   const pend = m.pending || [];
   $('pendingBox').classList.toggle('hidden', !pend.length);
@@ -1987,9 +2029,20 @@ function renderDetail(){
   const full = !mineP && !!m.capacity && names.length >= m.capacity;
   const past = m.date < todayStr;   // 지난 모임은 참가·취소 불가 (기록 보존)
   const needsRequest = !isHost(m) && (m.join_mode === 'approve' || (state.user && state.user.is_guest));
-  $('joinBtn').textContent = past ? (joined ? '참가한 지난 모임' : '지난 모임') : mineP ? (joined ? '참가 취소' : '신청 취소') : full ? '정원 마감' : (needsRequest ? '참가 신청' : '참가');
+  const myAbsent = absent.some(p => p.user_id === myId());
+  $('joinBtn').textContent = past ? (joined ? '참가한 지난 모임' : myAbsent ? '불참한 지난 모임' : '지난 모임') : mineP ? (joined ? '참가 취소' : '신청 취소') : full ? '정원 마감' : (needsRequest ? '참가 신청' : '참가');
   $('joinBtn').className = mineP || past ? 'ghost' : 'primary';
   $('joinBtn').disabled = full || past;
+  const voteMode = showVote && !past;
+  $('voteBtns').classList.toggle('hidden', !voteMode);
+  $('joinBtn').classList.toggle('hidden', voteMode);
+  $('voteYes').className = 'yes' + (mineP ? ' on' : '');
+  $('voteYes').textContent = mineP && !joined ? '참가 신청 중' : full ? '참가 (정원 마감)' : '참가';
+  $('voteYes').disabled = full && !mineP;
+  $('voteNo').className = 'no' + (myAbsent ? ' on' : '');
+  $('attEditBtn').classList.toggle('hidden', !(reg && manage && m.date <= todayStr));
+  $('attEditBtn').textContent = attOn ? '출석 정리 끝내기' : '출석 정리';
+  $('attHint').classList.toggle('hidden', !attOn);
   $('deleteBtn').classList.toggle('hidden', !canDelete(m));
   $('editBtn').classList.toggle('hidden', !manage || (m.kind === 'regular' && !isAdmin()));
   $('genBtn').classList.toggle('hidden', !manage);
@@ -2026,9 +2079,40 @@ async function toggleJoin(){
   toast(mine ? (mine.status === 'pending' ? '신청을 취소했습니다' : '참가를 취소했습니다') : requested ? '참가 신청했어요. 주최자가 승인하면 명단에 올라가요' : '참가했습니다');
   await openDetail(m.id, true, true);
 }
+// 정기 모임 참가/불참 투표 (회원 이상). 이미 고른 쪽을 다시 누르면 투표 취소
+async function vote(attend){
+  const m = state.current; if (!m || !state.user) return;
+  if (m.date < todayStr) return toast('지난 모임은 투표할 수 없어요');
+  const mine = [...m.participants, ...(m.pending || []), ...(m.absent || [])].find(p => p.user_id === myId());
+  if (mine && (mine.status !== 'absent') === attend){
+    const { error } = await db.from('participants').delete().eq('id', mine.id);
+    if (error) return showError(error);
+    toast('투표를 취소했어요');
+  } else {
+    if (!(await requireApproved())) return;
+    const { data, error } = await db.rpc('vote_meetup', { mid: m.id, attend });
+    if (error){
+      if (/vote_meetup/.test(error.message)) return toast('관리자가 SQL 34단계를 실행하면 투표할 수 있어요');
+      if (/\bfull\b/.test(error.message)) return toast('정원이 다 찼어요');
+      return showError(error);
+    }
+    toast(!attend ? '불참으로 표시했어요' : data === 'pending' ? '참가 신청했어요. 주최자가 승인하면 명단에 올라가요' : '참가로 표시했어요');
+  }
+  await openDetail(m.id, true, true);
+}
+// 출석 정리 (모임 당일부터, 관리 권한자): 실제 온 사람에 맞춰 참가 ↔ 불참. 정기 출석 통계에 쓰임
+function toggleAttEdit(){ const m = state.current; if (!m) return; state.attEdit = state.attEdit === m.id ? null : m.id; renderDetail(); }
+async function markAttendance(uid, attend){
+  const m = state.current; if (!m) return;
+  const { error } = await db.rpc('mark_attendance', { mid: m.id, target: uid, attend });
+  if (error) return /mark_attendance/.test(error.message) ? toast('관리자가 SQL 34단계를 실행하면 쓸 수 있어요') : showError(error);
+  toast(attend ? '참가로 바꿨어요' : '불참으로 바꿨어요');
+  await openDetail(m.id, true, true);
+}
 function joinAfterLogin(){
   const m = state.current; if (!m) return;
-  if ([...m.participants, ...(m.pending || [])].some(p => p.user_id === myId())) return toast('이미 참가했거나 신청한 모임이에요');
+  if ([...m.participants, ...(m.pending || []), ...(m.absent || [])].some(p => p.user_id === myId())) return toast('이미 참가했거나 투표한 모임이에요');
+  if (m.kind === 'regular' && !state.user.is_guest) return vote(true);
   toggleJoin();
 }
 async function approveParticipant(id){
@@ -2229,7 +2313,7 @@ function renderStandings(){
 
 // 두 번 눌러도 한 번만 실행 (느린 망에서 모임·대진이 두 번 생기는 것 방지)
 ['submitCreate','generateBracket','toggleJoin','guestAuth','submitNotice','submitSuggest','addMatch','approveParticipant','removeParticipant',
- 'saveDues','deleteDues','saveProfile','deleteMeetup','resetBracket','setBracket','claimAdmin','leaveClub'].forEach(n => {
+ 'saveDues','deleteDues','saveProfile','deleteMeetup','resetBracket','setBracket','vote','markAttendance','claimAdmin','leaveClub'].forEach(n => {
   const f = window[n]; if (typeof f !== 'function') return;
   let running = false;
   window[n] = async function(...a){ if (running) return; running = true; try { return await f.apply(this, a); } finally { running = false; } };
