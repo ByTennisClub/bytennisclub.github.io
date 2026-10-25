@@ -626,6 +626,7 @@
     <button class="kakao" onclick="loginKakao()"><svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.8 1.9 5.3 4.7 6.7L5.6 21.5c-.1.3.2.5.5.3l4.6-3.1c.4 0 .8.1 1.3.1 5.5 0 10-3.6 10-8S17.5 3 12 3z"/></svg>카카오로 로그인</button>
     <button class="linkBtn" id="kakaoOtherBtn" style="margin-top:6px" onclick="loginKakao(true)">다른 카카오 계정으로 로그인</button>
     <button class="ghost" style="width:100%;margin-top:8px" onclick="openGuest()">이름 + 전화번호로 로그인 · 가입</button>
+    <p class="muted" style="font-size:12px;margin:8px 0 0">이름 + 전화번호로 가입했다면 그걸로 로그인한 뒤 내 정보에서 카카오를 연결하세요.</p>
     <div style="margin-top:10px"><button class="back" style="margin:0" onclick="closeLogin()">나중에</button></div>
   </div>
 </div>
@@ -1281,6 +1282,8 @@ async function saveProfile(){
   if (phone && (phone.length < 10 || phone.length > 11)) return toast('전화번호를 확인하세요');
   if (phone && phone !== (state.user.phone || '')){
     const t = await db.rpc('phone_taken', { p: phone, self: myId() });
+    // 카카오로 새로 들어온 사람이 예전에 이름+전화번호로 가입한 번호를 넣은 경우: 같은 사람의 계정이 둘로 나뉘지 않게 안내
+    if (!t.error && t.data && t.data !== 'kakao' && !state.user.byPhone) return alert('이 전화번호로 이미 가입된 계정이 있어요.\n\n그 계정을 쓰시려면 로그아웃한 뒤 "이름 + 전화번호로 로그인"으로 들어가서, 내 정보 → 카카오 계정 연결을 눌러 주세요. 지금 이 카카오 계정은 관리자가 정리해 드려요.');
     if (!t.error && t.data) return toast(t.data === 'kakao' ? '이미 카카오로 가입된 번호예요' : '이미 전화번호로 가입된 번호예요');
   }
   if (n.toLowerCase() !== (state.user.name||'').toLowerCase()){
@@ -1293,7 +1296,10 @@ async function saveProfile(){
     const pe = await db.from('profile_private').upsert({ id: myId(), phone });
     if (pe.error){
       Object.assign(state.user, row); renderUser(); closeProfile(); refreshView(true);   // 닉네임 등은 이미 저장됨
-      return /duplicate|unique/i.test(pe.error.message) ? toast('전화번호는 이미 등록된 번호라 저장하지 못했어요. 나머지는 저장됐어요') : showError(pe.error);
+      if (!/duplicate|unique/i.test(pe.error.message)) return showError(pe.error);
+      // 카카오로 새로 들어온 사람이 예전에 이름+전화번호로 가입한 번호를 넣은 경우: 같은 사람의 계정이 둘로 나뉘지 않게 안내
+      if (!state.user.byPhone) return alert('이 전화번호로 이미 가입된 계정이 있어요.\n\n그 계정을 쓰시려면 로그아웃한 뒤 "이름 + 전화번호로 로그인"으로 들어가서, 내 정보 → 카카오 계정 연결을 눌러 주세요. 지금 이 카카오 계정은 관리자가 정리해 드려요.');
+      return toast('전화번호는 이미 등록된 번호라 저장하지 못했어요. 나머지는 저장됐어요');
     }
     row.phone = phone;
   }
