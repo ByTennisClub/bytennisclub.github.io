@@ -8,7 +8,7 @@
 | 저장소 | https://github.com/ByTennisClub/bytennisclub.github.io (클럽 전용 계정. main 브랜치 → GitHub Pages 자동 배포, 1~2분) |
 | 데이터 | Supabase 프로젝트 `wzjoiitmujirjtliwwjg` (공개 키는 index.html 상단, service_role 키는 절대 넣지 말 것) |
 | 로그인 | 카카오 OAuth(Supabase Kakao provider, "다른 카카오 계정으로 로그인"은 prompt=login 으로 카카오 로그인 화면 다시 띄움), 전화번호 계정(이름+번호 → 이메일/비밀번호로 변환) |
-| 상태 (2026-10-22) | SQL 1~34단계 적용됨 (35단계 회비 정산·가입일은 실행 필요). 운영하며 버그 리포트 반영 단계 |
+| 상태 (2026-10-22) | SQL 1~35단계 모두 적용됨. 운영하며 버그 리포트 반영 단계 |
 
 ## 파일 구성
 - `index.html` : 화면 + 동작 전체. 상단 상수로 모임 이름(`CLUB_NAME`), 모임 종류 이름(`KIND`), 코트 예약 링크(`LINKS`) 수정
