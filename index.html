@@ -740,7 +740,7 @@
       <img id="pAvatar" class="avatar-lg" src="" alt="" onerror="this.style.display='none'">
       <div style="flex:1;min-height:56px;cursor:default;-webkit-tap-highlight-color:transparent;user-select:none" onclick="secretTap()"><div id="pName" style="font-weight:700;font-size:16px"></div><div id="pRole" class="muted"></div></div>
     </div>
-    <label>닉네임</label>
+    <label>닉네임 <span class="muted" id="kakaoNameHint" style="font-weight:400"></span></label>
     <input id="fName" maxlength="20" placeholder="예: 홍길동" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229)saveProfile()">
     <label>전화번호 <span class="muted" style="font-weight:400" id="phoneVisHint">(관리자에게만 보여요)</span></label>
     <input id="fPhone" inputmode="numeric" placeholder="010-0000-0000" autocomplete="tel" maxlength="13" oninput="maskPhone(this)">
@@ -1005,6 +1005,13 @@ async function setUser(u){
   const byPhone = /^guest-\d+@guest\.bytennis\.app$/.test(u.email || '');
   const meta = u.user_metadata || {};
   if (data){ data.byPhone = byPhone; data.hasKakao = ids.includes('kakao'); }
+  // 카카오로 로그인했거나 연결한 계정: 카카오 닉네임은 내 정보에 참고로, 프로필 사진은 카카오 사진을 따라감(바뀌면 갱신)
+  const kd = ((u.identities || []).find(i => i.provider === 'kakao') || {}).identity_data || {};
+  if (data && data.hasKakao){
+    data.kakaoName = kd.name || kd.nickname || kd.preferred_username || kd.user_name || kd.full_name || null;
+    const kav = https(kd.avatar_url || kd.picture || '');
+    if (kav && kav !== data.avatar_url){ data.avatar_url = kav; db.from('profiles').update({ avatar_url: kav }).eq('id', u.id).then(() => {}); }
+  }
   state.user = data || { id: u.id, role: 'member',
     name: meta.name || meta.full_name || meta.preferred_username || '회원',
     avatar_url: meta.avatar_url || meta.picture || null };
@@ -1207,6 +1214,7 @@ function openProfile(onboard){
   $('phoneVisHint').textContent = state.phoneShare && !u.is_guest ? '(관리자와 회원에게 보여요 · 게스트에게는 안 보여요)' : '(관리자에게만 보여요)';
   setCrown(u.show_crown !== false);
   $('fName').value = u.name; $('fAdminCode').value = '';
+  $('kakaoNameHint').textContent = u.kakaoName ? `(카카오 닉네임: ${u.kakaoName})` : '';   // 본인 내 정보에서만 보임
   pick.experience = u.experience || null; pick.gender = u.gender || null;
   renderOpts('optExp', EXP, 'experience'); renderOpts('optGender', GENDER, 'gender');
   $('memoField').classList.toggle('hidden', !('memo' in u)); $('fMemo').value = u.memo || '';   // memo 칸이 DB 에 생기기 전(32단계 전)엔 숨김
