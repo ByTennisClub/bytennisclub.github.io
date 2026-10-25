@@ -1701,23 +1701,23 @@ async function loadDues(){
   renderDues();
   return true;
 }
-// 내 회비 확인 (보기만): 최근 3달, 총무가 한 번이라도 표시한 회원에게만. 표시 안 된 달은 '확인 전'
+// 내 회비 확인 (보기만): 이번 달은 항상(표시 안 됐으면 '확인 전'), 다음 달은 미리 입금 완료·면제로 표시됐을 때만
 let myDues = null;
 const ymShift = (ym, d) => { const [y, m] = ym.split('-').map(Number); return ymd(new Date(y, m - 1 + d, 1)).slice(0, 7); };
 async function loadMyDues(){
   if (!state.user || state.user.is_guest || !approved()){ myDues = null; return; }
-  const now = todayStr.slice(0, 7), from = ymShift(now, -2);
-  const { data, error } = await db.from('dues_payments').select('month,status').eq('user_id', myId()).gte('month', from).lte('month', now);
-  if (error || !data || !data.length){ myDues = null; renderDues(); return; }
-  const join = (state.user.joined_at || '').slice(0, 7), map = Object.fromEntries(data.map(r => [r.month, r.status]));
-  myDues = [from, ymShift(now, -1), now].filter(m => !join || m >= join).map(m => ({ m, s: map[m] || 'none' }));
+  const now = todayStr.slice(0, 7), next = ymShift(now, 1);
+  const { data, error } = await db.from('dues_payments').select('month,status').eq('user_id', myId()).in('month', [now, next]);
+  if (error){ myDues = null; return; }   // 35단계 전
+  const map = Object.fromEntries((data || []).map(r => [r.month, r.status]));
+  myDues = [{ m: now, s: map[now] || 'none' }].concat(map[next] ? [{ m: next, s: map[next] }] : []);
   renderDues();
 }
 const MYDUES = { paid: '입금 완료', exempt: '면제', none: '확인 전' };
 function renderDues(){
   const canSee = approved() && !state.user.is_guest, a = dues.acct;   // 회비 카드는 회원 이상만 (DB: schema27)
   const md = canSee && myDues && myDues.length ? myDues : null;
-  $('myDuesNow').innerHTML = md ? (x => `<span class="myDues ${x.s}">${+x.m.slice(5)}월 ${MYDUES[x.s]}</span>`)(md[md.length - 1]) : '';
+  $('myDuesNow').innerHTML = md ? (x => `<span class="myDues ${x.s}">${+x.m.slice(5)}월 ${MYDUES[x.s]}</span>`)(md[0]) : '';   // 제목 옆엔 이번 달
   $('myDuesRow').innerHTML = md ? `<div class="myDuesRow"><span>내 회비</span>${md.map(x => `<span class="myDues ${x.s}">${+x.m.slice(5)}월 ${MYDUES[x.s]}</span>`).join('')}</div>` : '';
   const show = canSee && (!!dues.text || !!a || !!md);
   $('duesCard').classList.toggle('hidden', !show);
