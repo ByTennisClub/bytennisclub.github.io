@@ -227,6 +227,17 @@
   @media (hover:none){body.typing .tabs{display:none}}   /* 폰에서 글자 입력 중엔 아래 탭 바 숨김 (키보드 위로 올라와 입력 칸을 가리지 않게) */
   a.mapLink{display:inline-block;margin-left:6px;padding:1px 9px;border:1px solid var(--line);border-radius:999px;background:var(--soft);font-size:12px;font-weight:600;color:var(--text);text-decoration:none;vertical-align:1px;white-space:nowrap}
   a.ulink{color:var(--accent-ink);text-decoration:underline;text-underline-offset:2px}
+  .ledMonth{justify-content:center;gap:14px;margin:10px 0 6px}
+  .ledMonth b{font-size:16px;min-width:110px;text-align:center}
+  .ledMonth button{min-height:36px;padding:2px 14px;font-size:18px}
+  .ledSum{display:flex;gap:14px;justify-content:center;font-size:14px;color:var(--muted);margin-bottom:6px}
+  .ledSum b{color:var(--text)} .ledSum .paid b{color:#16a34a} .ledSum .none b{color:var(--accent)}
+  .ledRow{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+  .ledRow .nm{flex:1;min-width:0} .ledRow .muted{font-size:12px;margin-top:2px}
+  .ledPill{flex:none;min-width:64px;min-height:38px;border-radius:999px;font-weight:700;font-size:14px;cursor:pointer;border:1.5px solid}
+  .ledPill.none{background:#fff;border-color:#fca5a5;color:var(--accent)}
+  .ledPill.paid{background:#16a34a;border-color:#16a34a;color:#fff}
+  .ledPill.exempt{background:var(--soft);border-color:var(--line);color:var(--muted)}
   .vsum{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:0 0 10px;padding:9px 12px;background:var(--soft);border:1px solid var(--line);border-radius:10px;font-size:13px;color:var(--muted);cursor:pointer}
   .vsum b{color:var(--text)}
   .vsum .vmore{display:inline-flex;align-items:center;gap:2px;font-weight:700;color:var(--text);white-space:nowrap}
@@ -495,6 +506,10 @@
       <div id="members" style="margin-top:6px"></div>
     </div>
     <div class="card">
+      <div class="row"><strong>회비 정산</strong><button class="ghost" style="min-height:34px;padding:4px 14px;font-size:13px" onclick="openLedger()">열기</button></div>
+      <div class="muted" id="ledCardSum">월별로 누가 회비를 냈는지 표시해요.</div>
+    </div>
+    <div class="card">
       <div class="row"><strong>건의사항</strong><span class="muted" id="sugCount"></span></div>
       <div id="sugList" style="margin-top:6px"></div>
     </div>
@@ -624,6 +639,17 @@
     <div class="row"><strong id="hTitle"></strong><button class="icon" onclick="closeHistory()">&times;</button></div>
     <div class="muted" id="hSum" style="margin-top:4px"></div>
     <div id="hList" style="margin-top:8px"></div>
+  </div>
+</div>
+
+<!-- 회비 정산 (관리자) -->
+<div class="modal" id="ledgerModal" onclick="if(event.target===this&&bdDown===this)closeLedger()">
+  <div class="sheet">
+    <div class="row"><strong>회비 정산</strong><button class="icon" onclick="closeLedger()">&times;</button></div>
+    <div class="row ledMonth"><button class="ghost" onclick="ledgerMove(-1)" aria-label="이전 달">‹</button><b id="ledMonth"></b><button class="ghost" onclick="ledgerMove(1)" aria-label="다음 달">›</button></div>
+    <div class="ledSum" id="ledSum"></div>
+    <div class="muted" style="font-size:13px;text-align:center">오른쪽 칸을 누를 때마다 미납 → 납부 → 면제 순으로 바뀌어요.</div>
+    <div id="ledList" style="margin-top:8px"></div>
   </div>
 </div>
 
@@ -1274,7 +1300,7 @@ let phones = {};
 let joins = {};   // user_id -> {total, upcoming, reg(지난 정기 모임 출석)}
 function memberRow(p, actions){
   const j = joins[p.id] || { total: 0, upcoming: 0 };
-  const info = ([EXP[p.experience], GENDER[p.gender], born(p.birth_year), phones[p.id] ? fmtPhone(phones[p.id]) : ''].filter(Boolean).join(' · ') || '프로필 미입력')
+  const info = (p.joined_at ? `가입 ${fmtJoin(p.joined_at)} · ` : '') + ([EXP[p.experience], GENDER[p.gender], born(p.birth_year), phones[p.id] ? fmtPhone(phones[p.id]) : ''].filter(Boolean).join(' · ') || '프로필 미입력')
     + ` · <span class="hLink" onclick="event.stopPropagation();openHistory('${p.id}',${jsq(p.name)})">참가 ${j.total}회` + (j.upcoming ? ` (예정 ${j.upcoming})` : '') + (j.reg ? ` · ${KIND.regular} 출석 ${j.reg}회` : '') + '</span>';
   const tags = (p.role==='owner' ? '<span class="adminBadge">대표 ★</span>' : p.role==='admin' ? '<span class="adminBadge" style="background:var(--soft);color:var(--muted)">관리자</span>' : '')
     + (p.is_guest ? '<span class="adminBadge" style="background:#e0f2fe;color:#075985">게스트</span>' : (p.role==='member' ? '<span class="adminBadge" style="background:#dcfce7;color:#166534">회원</span>' : ''))
@@ -1291,7 +1317,75 @@ const fillIfClean = (id, v) => { const el = $(id); if (!el.dataset.dirty) el.val
 const markClean = (...ids) => ids.forEach(id => { delete $(id).dataset.dirty; });
 function resetAdminDrafts(){ ['fRules','fDues','fBank','fAcctNo','fHolder'].forEach(id => { const el = $(id); if (el) delete el.dataset.dirty; }); }
 document.querySelectorAll('#viewAdmin textarea, #viewAdmin input').forEach(el => el.addEventListener('input', () => { el.dataset.dirty = '1'; }));
+// ===== 회비 정산 (관리자) =====
+// 회원별·월별로 미납(기록 없음) / 납부 / 면제. 그 달 말일까지 가입한 회원만 (게스트·가입 대기 제외, 휴식은 표시)
+const ledger = { month: '', members: [], pays: {} };
+const fmtJoin = d => d ? d.replace(/-/g, '.') : '-';
+const monthEnd = ym => { const [y, m] = ym.split('-').map(Number); return ymd(new Date(y, m, 0)); };
+const ledgerPeople = (list, ym) => list.filter(u => !u.is_guest && u.status !== 'pending' && (!u.joined_at || u.joined_at <= monthEnd(ym))).sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+const LED = { none: '미납', paid: '납부', exempt: '면제' };
+const needSql35 = e => /joined_at|dues_payments/.test((e && e.message) || '');
+function openLedger(){ ledger.month = todayStr.slice(0, 7); $('ledgerModal').classList.add('open'); loadLedger(); }
+function closeLedger(){ $('ledgerModal').classList.remove('open'); loadLedgerCard(); }
+function ledgerMove(d){ const [y, m] = ledger.month.split('-').map(Number); ledger.month = ymd(new Date(y, m - 1 + d, 1)).slice(0, 7); loadLedger(); }
+async function loadLedger(){
+  const ym = ledger.month;
+  $('ledMonth').textContent = `${+ym.slice(0, 4)}년 ${+ym.slice(5)}월`; $('ledSum').innerHTML = ''; $('ledList').innerHTML = '<div class="empty">불러오는 중…</div>';
+  const [pr, pay] = await Promise.all([
+    db.from('profiles').select('id,name,role,status,is_guest,joined_at'),
+    db.from('dues_payments').select('user_id,status,updated_by,updated_at').eq('month', ym)
+  ]);
+  const err = pr.error || pay.error;
+  if (err){ if (needSql35(err)){ $('ledList').innerHTML = '<div class="empty">관리자가 SQL 35단계를 실행하면 쓸 수 있어요</div>'; return; } return showError(err); }
+  if (ym !== ledger.month) return;   // 그 사이 다른 달로 넘겼으면 무시
+  ledger.members = ledgerPeople(pr.data, ym);
+  ledger.pays = Object.fromEntries(pay.data.map(r => [r.user_id, r]));
+  renderLedger();
+}
+function renderLedger(){
+  const ps = ledger.members, st = u => (ledger.pays[u.id] || {}).status || 'none';
+  const n = k => ps.filter(u => st(u) === k).length;
+  $('ledSum').innerHTML = `<span class="paid">납부 <b>${n('paid')}</b></span><span class="none">미납 <b>${n('none')}</b></span><span>면제 <b>${n('exempt')}</b></span>`;
+  $('ledList').innerHTML = ps.length ? ps.map(u => { const s = st(u), p = ledger.pays[u.id]; return `
+    <div class="ledRow">
+      <div class="nm"><b>${esc(u.name)}</b>${u.status === 'blocked' ? '<span class="adminBadge" style="background:#fee2e2;color:#991b1b">휴식</span>' : ''}
+        <div class="muted">가입 ${fmtJoin(u.joined_at)}${p ? ` · ${esc(p.updated_by || '')} ${p.updated_at.slice(5, 10).replace('-', '/')} 표시` : ''}</div></div>
+      <button type="button" class="ledPill ${s}" onclick="cycleDues('${u.id}')">${LED[s]}</button>
+    </div>`; }).join('') : '<div class="empty">이 달에 회비를 낼 회원이 없어요</div>';
+}
+async function cycleDues(uid){
+  const ym = ledger.month, cur = (ledger.pays[uid] || {}).status || 'none';
+  const next = cur === 'none' ? 'paid' : cur === 'paid' ? 'exempt' : 'none';
+  const now = new Date().toISOString();
+  const { error } = next === 'none'
+    ? await db.from('dues_payments').delete().eq('user_id', uid).eq('month', ym)
+    : await db.from('dues_payments').upsert({ user_id: uid, month: ym, status: next, updated_by: state.user.name, updated_at: now });
+  if (error) return needSql35(error) ? toast('관리자가 SQL 35단계를 실행하면 쓸 수 있어요') : showError(error);
+  if (ym !== ledger.month) return;
+  if (next === 'none') delete ledger.pays[uid]; else ledger.pays[uid] = { user_id: uid, status: next, updated_by: state.user.name, updated_at: now };
+  renderLedger();
+}
+// 관리 탭 카드에 이번 달 요약
+async function loadLedgerCard(){
+  const ym = todayStr.slice(0, 7);
+  const [pr, pay] = await Promise.all([db.from('profiles').select('id,name,status,is_guest,joined_at'), db.from('dues_payments').select('user_id,status').eq('month', ym)]);
+  if (pr.error || pay.error) return;   // 35단계 전엔 안내 문구 그대로
+  const ps = ledgerPeople(pr.data, ym), m = Object.fromEntries(pay.data.map(r => [r.user_id, r.status]));
+  const paid = ps.filter(u => m[u.id] === 'paid').length, ex = ps.filter(u => m[u.id] === 'exempt').length;
+  $('ledCardSum').textContent = `${+ym.slice(5)}월: 납부 ${paid} · 미납 ${ps.length - paid - ex}` + (ex ? ` · 면제 ${ex}` : '');
+}
+// 가입일 (회원 카드, 관리자만)
+async function setJoinedAt(uid, v){
+  if (!v) return;
+  const { data, error } = await db.from('profiles').update({ joined_at: v }).eq('id', uid).select('id');
+  if (error) return needSql35(error) ? toast('관리자가 SQL 35단계를 실행하면 쓸 수 있어요') : showError(error);
+  if (!data || !data.length) return toast('바꿀 권한이 없어요');
+  toast('가입일을 바꿨어요');
+  if (state.view === 'admin') loadAdmin();
+}
+
 async function loadAdmin(){
+  loadLedgerCard();
   $('ownerSettings').classList.toggle('hidden', !isOwner());
   if (!$('fPromo').value){ let t = ''; try { t = localStorage.getItem('clubShareText') || ''; } catch {} $('fPromo').value = t || defaultPromo(); }
   renderFmtSeg();
@@ -1818,6 +1912,7 @@ async function openMember(uid){
     </div>
     ${isOwner() ? `<div style="margin-top:14px"><div style="font-size:13px;font-weight:700;color:var(--muted);margin-bottom:6px">구력 수정 <span style="font-weight:400">(대표만)</span></div>
       <div class="opts">${Object.entries(EXP).map(([v,l]) => `<button type="button" class="${u.experience===v?'on':''}" onclick="setMemberExp('${u.id}','${v}')">${l}</button>`).join('')}</div></div>` : ''}
+    ${isAdmin() && 'joined_at' in u ? `<div style="margin-top:14px"><div style="font-size:13px;font-weight:700;color:var(--muted);margin-bottom:6px">가입일 <span style="font-weight:400">(관리자만 보고 고칠 수 있어요)</span></div><input type="date" value="${esc(u.joined_at || '')}" max="${todayStr}" onchange="setJoinedAt('${u.id}', this.value)" style="width:auto"></div>` : ''}
     ${memberAdminMenu(u)}`;
 }
 function memberAdminMenu(u){
@@ -2400,7 +2495,7 @@ function renderStandings(){
 
 // 두 번 눌러도 한 번만 실행 (느린 망에서 모임·대진이 두 번 생기는 것 방지)
 ['submitCreate','generateBracket','toggleJoin','guestAuth','submitNotice','submitSuggest','addMatch','approveParticipant','removeParticipant',
- 'saveDues','deleteDues','saveProfile','deleteMeetup','resetBracket','setBracket','vote','markAttendance','claimAdmin','leaveClub'].forEach(n => {
+ 'saveDues','deleteDues','saveProfile','deleteMeetup','resetBracket','setBracket','vote','markAttendance','cycleDues','setJoinedAt','claimAdmin','leaveClub'].forEach(n => {
   const f = window[n]; if (typeof f !== 'function') return;
   let running = false;
   window[n] = async function(...a){ if (running) return; running = true; try { return await f.apply(this, a); } finally { running = false; } };
