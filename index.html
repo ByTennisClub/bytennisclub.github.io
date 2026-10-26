@@ -1050,7 +1050,12 @@ document.addEventListener('keydown', e => {
   else document.querySelectorAll('.modal.open').forEach(m => m.classList.remove('open'));
 });
 window.addEventListener('popstate', e => {
-  if (skipPop){ skipPop--; return; }
+  if (skipPop){
+    skipPop--;
+    if (pendingNav){ history.replaceState(pendingNav, ''); pendingNav = null; }
+    else if (pendingView && !skipPop){ const v = pendingView; pendingView = null; navRecord(v); }
+    return;
+  }
   const top = modalStack.pop();
   if (top){ $(top).classList.remove('open'); if (top === 'loginModal') afterLogin = null; return; }
   const st = e.state;
@@ -1119,8 +1124,9 @@ function closeLogin(){ $('loginModal').classList.remove('open'); afterLogin = nu
 async function loginKakao(other){   // other: 다른 카카오 계정으로 (카카오 로그인 화면을 다시 띄움)
   const mid = state.current ? state.current.id : (state.view === 'detail' && state.gateMeetup);   // 로그인 안내 화면에서 눌렀어도 그 모임으로 복귀
   if (mid){ sessionStorage.setItem('returnMeetup', mid); if (afterLogin === joinAfterLogin) sessionStorage.setItem('returnJoin', '1'); }
-  const { error } = await db.auth.signInWithOAuth({ provider: 'kakao', options: { redirectTo: location.origin + location.pathname, scopes: 'profile_nickname profile_image', queryParams: other ? { prompt: 'login' } : undefined } });
-  if (error) showError(error);
+  const { data, error } = await db.auth.signInWithOAuth({ provider: 'kakao', options: { redirectTo: location.origin + location.pathname, scopes: 'profile_nickname profile_image', queryParams: other ? { prompt: 'login' } : undefined, skipBrowserRedirect: true } });
+  if (error) return showError(error);
+  location.replace(data.url);   // 카카오 다녀온 기록이 뒤로가기에 쌓이지 않게
 }
 // 회원 탈퇴: 본인 계정 삭제 (대표는 먼저 대표를 넘겨야 함). 내 정보 위에 확인 창을 띄움
 function openLeave(){
@@ -1156,7 +1162,8 @@ function renderOpts(id, map, key){
 async function linkKakao(){
   if (!confirm('지금 로그인한 계정에 카카오를 연결할까요?\n카카오 로그인 화면으로 이동합니다.')) return;
   sessionStorage.setItem('linkingKakao', '1');   // 돌아왔을 때 '연결' 결과로 안내
-  const { error } = await db.auth.linkIdentity({ provider: 'kakao', options: { redirectTo: location.origin + location.pathname, scopes: 'profile_nickname profile_image' } });
+  const { data, error } = await db.auth.linkIdentity({ provider: 'kakao', options: { redirectTo: location.origin + location.pathname, scopes: 'profile_nickname profile_image', skipBrowserRedirect: true } });
+  if (!error && data && data.url) return location.replace(data.url);   // 카카오 다녀온 기록이 뒤로가기에 쌓이지 않게
   if (error){
     if (/manual linking|not enabled|disabled/i.test(error.message)) return toast('Supabase에서 계정 연결(Manual linking)을 켜야 해요');
     if (/already|exists/i.test(error.message)) return toast('이 카카오 계정은 이미 다른 회원과 연결돼 있어요. 관리자에게 문의하세요');
@@ -1633,16 +1640,34 @@ async function submitCreate(){
 
 // ===== 상세 =====
 // ===== 화면 전환 =====
+// 뒤로가기 기록은 얕게: 처음 화면(0) → 다른 탭(1) → 상세·공지(+1) 까지만 쌓음 (카톡에서 열었을 때 몇 번 만에 카톡으로 돌아가게)
+// 기록마다 d(깊이), b(처음 화면)를 둠. 탭끼리는 바꿔치기, 처음 화면 탭으로 가면 쌓인 기록을 한 번에 되돌림
+const TABS = ['home', 'calendar', 'admin'];
+let pendingNav = null, pendingView = null;
+function navRecord(s){
+  const st = history.state || {}, d = st.d || 0, b = st.b || (d === 0 ? st.view : 'home');
+  let idx;
+  if (TABS.includes(s.view)) idx = s.view === st.view ? d : (s.view === b || !TABS.includes(b)) ? 0 : 1;
+  else idx = TABS.includes(st.view) ? d + 1 : d;   // 탭에서 상세·공지는 한 칸 쌓고, 상세·공지끼리는 바꿔치기
+  const full = Object.assign({}, s, { d: idx, b: idx === 0 ? s.view : b, from: idx > 0 ? 1 : 0 });
+  if (idx > d) history.pushState(full, '');
+  else if (idx === d) history.replaceState(full, '');
+  else { pendingNav = full; skipPop++; history.go(idx - d); }   // 되돌린 뒤 그 자리를 바꿈 (popstate 에서)
+}
+// 지금 기록에 값 덧붙이기 (상세 id 등). 기록 정리가 진행 중이면 그쪽에 붙임
+function patchEntry(o){
+  if (pendingNav) Object.assign(pendingNav, o);
+  else if (pendingView) Object.assign(pendingView, o);
+  else history.replaceState(Object.assign({}, history.state, o), '');
+}
 function showView(name, opts){
   if (name === 'admin' && !isAdmin()) name = 'home';
   const pop = opts && opts.pop;
   if (!pop){
     const st = history.state || {};
-    const same = name === state.view && name !== 'detail';
-    const closing = st.modal && !document.querySelector('.modal.open#' + st.modal);   // 방금 닫힌 창의 기록
-    if (closing && same) {}                                                          // 창 기록은 창 쪽에서 되돌림
-    else if (closing || same) history.replaceState({ view: name, from: closing ? 1 : st.from }, '');
-    else history.pushState({ view: name, from: 1 }, '');
+    const closing = st.modal && !document.querySelector('.modal.open#' + st.modal);   // 방금 닫힌 창의 기록 (곧 창 쪽에서 되돌림)
+    if (closing) pendingView = { view: name };   // 창 기록이 되돌려진 뒤 반영
+    else navRecord({ view: name });
   }
   if (name !== 'detail') detailSeq++;   // 불러오던 상세가 늦게 끝나도 이 화면을 덮지 않게
   if (name === 'admin' && !pop) resetAdminDrafts();   // 관리 화면에 새로 들어오면 서버 값으로
@@ -2147,7 +2172,7 @@ function busy(on){
 async function openDetail(id, pop, keepScroll){
   if (!state.user){
     showView('detail', { pop, keepScroll }); state.gateMeetup = id;   // 로그인하면 refreshView 가 이 모임을 엶
-    history.replaceState(Object.assign({}, history.state, { view: 'detail', id }), '');
+    patchEntry({ view: 'detail', id });
     return;
   }
   const seq = ++detailSeq;
@@ -2160,8 +2185,8 @@ async function openDetail(id, pop, keepScroll){
   if (error && error.code !== 'PGRST116') return showError(error);
   if (!data){   // 삭제된 모임 (뒤로가기, 오래된 목록 등)
     toast('삭제됐거나 없는 모임이에요');
-    if (state.view === 'detail'){ if (history.state && history.state.from) history.back(); else { history.replaceState({ view: state.prevView }, ''); showView(state.prevView, { pop: true }); } }
-    else history.replaceState({ view: state.view, from: history.state && history.state.from }, '');
+    if (state.view === 'detail'){ if (history.state && history.state.from) history.back(); else { patchEntry({ view: state.prevView, id: undefined }); showView(state.prevView, { pop: true }); } }
+    else patchEntry({ view: state.view, id: undefined });
     return;
   }
   data.participants.sort((a,b)=>a.created_at.localeCompare(b.created_at));
@@ -2172,7 +2197,7 @@ async function openDetail(id, pop, keepScroll){
   if (state.attEdit !== id) state.attEdit = null;
   data.matches.sort((a,b)=>a.round-b.round || a.court-b.court);
   showView('detail', { pop, keepScroll });
-  history.replaceState(Object.assign({}, history.state, { view: 'detail', id }), '');
+  patchEntry({ view: 'detail', id });
   state.current = data;
   renderDetail();
   loadComments();
@@ -2545,9 +2570,9 @@ document.addEventListener('focusout', () => document.body.classList.remove('typi
 // 시작 주소 기억 후 정리 (?m= 이 남아 있으면 새로고침 때 같은 모임이 다시 열림)
 const startParams = new URLSearchParams(location.search);
 const cameFromLogin = startParams.has('code') || location.hash.includes('access_token');   // 카카오 로그인 후 돌아온 경우
-history.replaceState({ view: localStorage.getItem('startView') || 'home' }, '', startParams.has('m') ? location.pathname : location.href);
+history.replaceState({ view: localStorage.getItem('startView') || 'home', d: 0, b: localStorage.getItem('startView') || 'home' }, '', startParams.has('m') ? location.pathname : location.href);
 Promise.all([initAuth(), loadSettings()]).then(() => {
-  const v = localStorage.getItem('startView') || 'home'; history.replaceState(Object.assign({}, history.state, { view: v }), ''); showView(v, { pop: true });
+  const v = localStorage.getItem('startView') || 'home'; history.replaceState(Object.assign({}, history.state, { view: v, d: 0, b: v }), ''); showView(v, { pop: true });
   handleAuthReturn();   // 카카오 로그인·연결 결과 안내
   // 카톡 공유 링크(?m=모임id)로 들어왔거나, 카카오 로그인 전에 보던 모임이 있으면 그 모임 열기
   const ret = cameFromLogin ? sessionStorage.getItem('returnMeetup') : null;
