@@ -1038,7 +1038,7 @@ new MutationObserver(list => {
   list.forEach(m => {
     const el = m.target; if (!el.classList.contains('modal')) return;
     const open = el.classList.contains('open'), was = /(^|\s)open(\s|$)/.test(m.oldValue || '');
-    if (open && !was){ modalStack.push(el.id); history.pushState(Object.assign({}, history.state, { modal: el.id }), ''); }
+    if (open && !was){ modalStack.push(el.id); history.pushState(Object.assign({}, history.state, { modal: el.id, guard: undefined }), ''); }
     else if (!open && was){ const i = modalStack.lastIndexOf(el.id); if (i >= 0){ modalStack.splice(i, 1); closed++; } }
   });
   // 화면의 ×·취소 버튼으로 닫았으면 쌓아 둔 기록도 되돌림 (그 사이 다른 화면으로 옮겼으면 그대로 둠)
@@ -1059,6 +1059,11 @@ window.addEventListener('popstate', e => {
   const top = modalStack.pop();
   if (top){ $(top).classList.remove('open'); if (top === 'loginModal') afterLogin = null; return; }
   const st = e.state;
+  if (st && st.guard){   // 처음 화면에서 뒤로: 바로 나가지 않고 안내. 2초 안에 한 번 더 누르면 그대로 나감
+    toast('뒤로가기를 한 번 더 누르면 종료돼요');
+    clearTimeout(exitTimer); exitTimer = setTimeout(restoreTop, 2000);
+    return;
+  }
   if (!st) return showView('home', { pop: true });
   if (st.view === 'detail' && st.id) openDetail(st.id, true);
   else showView(!st.view || st.view === 'detail' ? 'home' : st.view, { pop: true });   // id 없는 상세 기록은 홈으로
@@ -1643,8 +1648,14 @@ async function submitCreate(){
 // 뒤로가기 기록은 얕게: 처음 화면(0) → 다른 탭(1) → 상세·공지(+1) 까지만 쌓음 (카톡에서 열었을 때 몇 번 만에 카톡으로 돌아가게)
 // 기록마다 d(깊이), b(처음 화면)를 둠. 탭끼리는 바꿔치기, 처음 화면 탭으로 가면 쌓인 기록을 한 번에 되돌림
 const TABS = ['home', 'calendar', 'admin'];
-let pendingNav = null, pendingView = null;
+let pendingNav = null, pendingView = null, exitTimer = null;
+// 처음 화면 아래에 같은 화면의 '보호 기록'을 하나 둠. 뒤로가기로 거기 닿으면 안내, 2초 지나면 위에 다시 쌓음
+function restoreTop(){
+  clearTimeout(exitTimer); exitTimer = null;
+  if (history.state && history.state.guard) history.pushState(Object.assign({}, history.state, { guard: undefined }), '');
+}
 function navRecord(s){
+  if (history.state && history.state.guard) restoreTop();
   const st = history.state || {}, d = st.d || 0, b = st.b || (d === 0 ? st.view : 'home');
   let idx;
   if (TABS.includes(s.view)) idx = s.view === st.view ? d : (s.view === b || !TABS.includes(b)) ? 0 : 1;
@@ -2572,7 +2583,8 @@ const startParams = new URLSearchParams(location.search);
 const cameFromLogin = startParams.has('code') || location.hash.includes('access_token');   // 카카오 로그인 후 돌아온 경우
 history.replaceState({ view: localStorage.getItem('startView') || 'home', d: 0, b: localStorage.getItem('startView') || 'home' }, '', startParams.has('m') ? location.pathname : location.href);
 Promise.all([initAuth(), loadSettings()]).then(() => {
-  const v = localStorage.getItem('startView') || 'home'; history.replaceState(Object.assign({}, history.state, { view: v, d: 0, b: v }), ''); showView(v, { pop: true });
+  const v = localStorage.getItem('startView') || 'home';
+  history.replaceState(Object.assign({}, history.state, { view: v, d: 0, b: v, guard: 1 }), ''); history.pushState({ view: v, d: 0, b: v }, '');   // 아래 기록은 '한 번 더 누르면 종료' 보호용 showView(v, { pop: true });
   handleAuthReturn();   // 카카오 로그인·연결 결과 안내
   // 카톡 공유 링크(?m=모임id)로 들어왔거나, 카카오 로그인 전에 보던 모임이 있으면 그 모임 열기
   const ret = cameFromLogin ? sessionStorage.getItem('returnMeetup') : null;
