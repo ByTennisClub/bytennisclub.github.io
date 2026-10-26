@@ -1645,9 +1645,8 @@ async function submitCreate(){
 
 // ===== 상세 =====
 // ===== 화면 전환 =====
-// 뒤로가기 기록은 얕게: 처음 화면(0) → 다른 탭(1) → 상세·공지(+1) 까지만 쌓음 (카톡에서 열었을 때 몇 번 만에 카톡으로 돌아가게)
-// 기록마다 d(깊이), b(처음 화면)를 둠. 탭끼리는 바꿔치기, 처음 화면 탭으로 가면 쌓인 기록을 한 번에 되돌림
-const TABS = ['home', 'calendar', 'admin'];
+// 뒤로가기 기록: 실제로 거쳐 온 화면 순서대로 되돌아가되, 같은 화면은 한 번만 (이미 거쳐 온 화면으로 가면 그 자리로 되돌림)
+// → 화면 종류(홈·달력·관리·상세·공지)가 다섯뿐이라 기록이 끝없이 쌓이지 않음. 기록마다 d(깊이), k(그때까지 거쳐 온 화면들)를 둠
 let pendingNav = null, pendingView = null, exitTimer = null;
 // 처음 화면 아래에 같은 화면의 '보호 기록'을 하나 둠. 뒤로가기로 거기 닿으면 안내, 2초 지나면 위에 다시 쌓음
 function restoreTop(){
@@ -1656,20 +1655,21 @@ function restoreTop(){
 }
 function navRecord(s){
   if (history.state && history.state.guard) restoreTop();
-  const st = history.state || {}, d = st.d || 0, b = st.b || (d === 0 ? st.view : 'home');
-  let idx;
-  if (TABS.includes(s.view)) idx = s.view === st.view ? d : (s.view === b || !TABS.includes(b)) ? 0 : 1;
-  else idx = TABS.includes(st.view) ? d + 1 : d;   // 탭에서 상세·공지는 한 칸 쌓고, 상세·공지끼리는 바꿔치기
-  const full = Object.assign({}, s, { d: idx, b: idx === 0 ? s.view : b, from: idx > 0 ? 1 : 0 });
+  const st = history.state || {}, d = st.d || 0;
+  const k = (st.k || []).slice(0, d + 1); if (k.length < d + 1) k[d] = st.view || 'home';
+  const seen = k.indexOf(s.view);
+  const idx = seen >= 0 ? seen : d + 1;   // 이미 거쳐 온 화면이면 그 자리로, 처음 가는 화면이면 한 칸 쌓음
+  const full = Object.assign({}, s, { d: idx, k: k.slice(0, idx).concat(s.view), from: idx > 0 ? 1 : 0 });
   if (idx > d) history.pushState(full, '');
   else if (idx === d) history.replaceState(full, '');
   else { pendingNav = full; skipPop++; history.go(idx - d); }   // 되돌린 뒤 그 자리를 바꿈 (popstate 에서)
 }
 // 지금 기록에 값 덧붙이기 (상세 id 등). 기록 정리가 진행 중이면 그쪽에 붙임
 function patchEntry(o){
-  if (pendingNav) Object.assign(pendingNav, o);
+  const fix = t => { if (o.view && t.k) t.k = t.k.slice(0, -1).concat(o.view); return t; };   // 화면이 바뀌면 거쳐 온 목록 끝도
+  if (pendingNav) fix(Object.assign(pendingNav, o));
   else if (pendingView) Object.assign(pendingView, o);
-  else history.replaceState(Object.assign({}, history.state, o), '');
+  else history.replaceState(fix(Object.assign({}, history.state, o)), '');
 }
 function showView(name, opts){
   if (name === 'admin' && !isAdmin()) name = 'home';
@@ -2581,10 +2581,10 @@ document.addEventListener('focusout', () => document.body.classList.remove('typi
 // 시작 주소 기억 후 정리 (?m= 이 남아 있으면 새로고침 때 같은 모임이 다시 열림)
 const startParams = new URLSearchParams(location.search);
 const cameFromLogin = startParams.has('code') || location.hash.includes('access_token');   // 카카오 로그인 후 돌아온 경우
-history.replaceState({ view: localStorage.getItem('startView') || 'home', d: 0, b: localStorage.getItem('startView') || 'home' }, '', startParams.has('m') ? location.pathname : location.href);
+history.replaceState({ view: localStorage.getItem('startView') || 'home', d: 0 }, '', startParams.has('m') ? location.pathname : location.href);
 Promise.all([initAuth(), loadSettings()]).then(() => {
   const v = localStorage.getItem('startView') || 'home';
-  history.replaceState(Object.assign({}, history.state, { view: v, d: 0, b: v, guard: 1 }), ''); history.pushState({ view: v, d: 0, b: v }, '');   // 아래 기록은 '한 번 더 누르면 종료' 보호용 showView(v, { pop: true });
+  history.replaceState(Object.assign({}, history.state, { view: v, d: 0, k: [v], guard: 1 }), ''); history.pushState({ view: v, d: 0, k: [v] }, '');   // 아래 기록은 '한 번 더 누르면 종료' 보호용 showView(v, { pop: true });
   handleAuthReturn();   // 카카오 로그인·연결 결과 안내
   // 카톡 공유 링크(?m=모임id)로 들어왔거나, 카카오 로그인 전에 보던 모임이 있으면 그 모임 열기
   const ret = cameFromLogin ? sessionStorage.getItem('returnMeetup') : null;
