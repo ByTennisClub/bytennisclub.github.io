@@ -415,6 +415,17 @@
   #viewRulebook ol.rb-steps li:not(:last-child)::after{content:"";position:absolute;left:11.5px;top:27px;bottom:3px;width:1px;background:var(--line)}
   #viewRulebook ol.rb-steps li b{display:block;font-size:14px;color:var(--text)}
   #viewRulebook ol.rb-steps li em{font-style:normal;font-weight:700;color:var(--accent-ink)}
+  /* 서브·리시브 위치 그림 */
+  #viewRulebook .rb-fold{width:100%;display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:12px;background:var(--accent-soft);color:var(--accent-ink);border:none;border-radius:12px;padding:12px 14px;font-family:inherit;font-size:14px;font-weight:800;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  #viewRulebook .rb-fold svg{flex:none;width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .15s}
+  #viewRulebook .rb-fold.open svg{transform:rotate(180deg)}
+  #viewRulebook .rb-pos{margin-top:10px}
+  #viewRulebook .rb-step{display:flex;align-items:center;gap:8px;margin:2px 0 8px}
+  #viewRulebook .rb-step button{flex:none;width:48px;font-size:20px;padding:0}
+  #viewRulebook .rb-step div{flex:1;text-align:center;font-size:12.5px;color:var(--muted)}
+  #viewRulebook .rb-step div b{display:block;font-size:15px;color:var(--text)}
+  #viewRulebook .rb-postext{background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:13.5px;line-height:1.6}
+  #viewRulebook .rb-postext b{color:var(--accent-ink)}
   /* glossary */
   #viewRulebook dl.rb-terms{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;margin:6px 0 0;font-size:13.5px}
   #viewRulebook dl.rb-terms dt{font-weight:800;white-space:nowrap}
@@ -678,6 +689,21 @@
         <li>팀 안에서 <b class="rb-k">포·백 사이드</b>를 나눠 정하고, 세트 끝까지 바꾸지 않아요.</li>
         <li>서브는 <b class="rb-k">한 번 튄 뒤</b> 받아요. 파트너 쪽 서브를 대신 받으면 실점.</li>
       </ul>
+      <button class="rb-fold" id="rbPosBtn" onclick="rbPosToggle()">서브·리시브 위치 그림으로 보기<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+      <div class="rb-pos hidden" id="rbPos">
+        <div class="opts" id="rbGames">
+          <button class="on" onclick="rbPosSet(0)">1게임 · A1 서브</button>
+          <button onclick="rbPosSet(1)">2게임 · B1 서브</button>
+        </div>
+        <div id="rbPosSvg"></div>
+        <div class="rb-step">
+          <button class="ghost" id="rbPrev" onclick="rbPosStep(-1)">‹</button>
+          <div id="rbPosHead"></div>
+          <button class="ghost" id="rbNext" onclick="rbPosStep(1)">›</button>
+        </div>
+        <div class="rb-postext" id="rbPosText"></div>
+        <p class="muted">예시로 A팀은 A1이 포·A2가 백, B팀은 B1이 포·B2가 백에서 받기로 정했어요. 3·4게임은 A2·B2가 서브하고 자리 원칙은 같아요. 실제로는 1게임 뒤 코트를 바꾸지만, 헷갈리지 않게 A팀은 왼쪽·B팀은 오른쪽에 그렸어요.</p>
+      </div>
     </div>
 
     <div class="card">
@@ -2894,15 +2920,16 @@ document.addEventListener('focusout', () => document.body.classList.remove('typi
 
 // ===== 테니스 룰북 =====
 // 룰북 코트 그림: 가로로 눕힌 코트, 1 = 10cm (23.77m × 10.97m)
-function rbCourt(mode){
+function rbCourt(mode, box, overlay){
   const L = 237.7, W = 109.7, A = 13.7, NET = L/2, SV = 64;   // 길이·폭·앨리 폭·네트 위치·네트~서비스라인
-  const singles = mode === 'singles', serve = mode === 'serve';
+  const singles = mode === 'singles', serve = mode === 'serve', pos = mode === 'pos';
   const line = (x1,y1,x2,y2,w=1.2) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#fff" stroke-width="${w}"/>`;
   let s = `<svg class="rb-court" viewBox="-14 -18 ${L+28} ${W+38}" role="img" aria-label="테니스 코트 그림">`;
   // 바닥: 공이 떨어져도 되는 곳은 초록
   s += `<rect x="0" y="0" width="${L}" height="${W}" fill="${singles ? 'var(--court-out)' : 'var(--court)'}" rx="1"/>`;
   if (singles) s += `<rect x="0" y="${A}" width="${L}" height="${W-2*A}" fill="var(--court)"/>`;
   if (serve) s += `<rect x="${NET}" y="${A}" width="${SV}" height="${W/2-A}" fill="#facc15" opacity=".85"/>`;
+  if (pos) s += `<rect x="${box.x}" y="${box.y}" width="${SV}" height="${W/2-A}" fill="#facc15" opacity=".85"/>`;
   // 줄
   s += `<rect x="0" y="0" width="${L}" height="${W}" fill="none" stroke="#fff" stroke-width="1.4"/>`;
   s += line(0,A,L,A) + line(0,W-A,L,W-A);
@@ -2919,6 +2946,10 @@ function rbCourt(mode){
     s += `<circle cx="${sx}" cy="${sy}" r="4" fill="var(--accent)" stroke="#fff" stroke-width="1"/>`;
     s += `<text x="${sx}" y="${W+14}" text-anchor="start">서버 (포 사이드)</text>`;
     s += `<text x="${NET+SV/2}" y="${W+14}" text-anchor="middle">대각선 서비스 박스로</text>`;
+  } else if (pos) {
+    s += overlay.svg;
+    s += `<text x="${NET/2}" y="${W+14}" text-anchor="middle">A팀 ${overlay.aServes ? '(서브)' : '(리시브)'}</text>`;
+    s += `<text x="${NET+NET/2}" y="${W+14}" text-anchor="middle">B팀 ${overlay.aServes ? '(리시브)' : '(서브)'}</text>`;
   } else {
     s += `<text x="${NET-SV/2}" y="${A+(W/2-A)/2+3.5}" text-anchor="middle" style="fill:#fff">서비스 박스</text>`;
     s += `<text x="${(NET-SV)/2}" y="${A/2+3.5}" text-anchor="middle" style="fill:${singles ? 'var(--muted)' : '#fff'}">앨리 ${singles ? '(아웃)' : '(인)'}</text>`;
@@ -2928,6 +2959,46 @@ function rbCourt(mode){
   return s + '</svg>';
 }
 document.querySelectorAll('#viewRulebook [data-court]').forEach(el => el.outerHTML = rbCourt(el.dataset.court));
+// 서브·리시브 위치: 게임(누가 서브)과 포인트(포·백)를 넘기며 네 명의 자리를 보여 줌
+const RB_GAMES = ['A1', 'B1'];
+const RB_POINTS = ['0-0', '15-0', '30-0', '30-15', '40-15', '40-30'];   // 난 포인트 수가 짝수면 포, 홀수면 백
+let rbG = 0, rbP = 0;
+const rbJosa = (n, a, b) => n + (n.endsWith('1') ? a : b);   // A1이·A2가 / A1은·A2는
+function rbPosToggle(){
+  const open = $('rbPos').classList.toggle('hidden') === false;
+  $('rbPosBtn').classList.toggle('open', open);
+  if (open) rbPosRender();
+}
+function rbPosSet(g){ rbG = g; rbP = 0; rbPosRender(); }
+function rbPosStep(d){ rbP = Math.max(0, Math.min(RB_POINTS.length - 1, rbP + d)); rbPosRender(); }
+function rbPosRender(){
+  const W = 109.7, A = 13.7, NET = 118.85, SV = 64, L = 237.7;
+  const srv = RB_GAMES[rbG], team = srv[0], other = team === 'A' ? 'B' : 'A';
+  const mate = team + (srv[1] === '1' ? '2' : '1');
+  const ad = rbP % 2 === 1, side = ad ? '백' : '포';
+  const rcv = other + (ad ? '2' : '1'), rcvMate = other + (ad ? '1' : '2');
+  // 왼쪽에서 서브하는 그림을 기준으로 잡고(포 = 서버 기준 오른쪽 = 그림 아래), 백이면 위아래를, B팀 서브면 180도 돌림
+  const flip = team === 'B';
+  const pt = (x, y) => { if (ad) y = W - y; return flip ? [L - x, W - y] : [x, y]; };
+  const people = [
+    [srv, ...pt(-6, W/2 + 20), true], [mate, ...pt(NET - 24, A + 20), false],
+    [rcv, ...pt(L - 2, A + 22), true], [rcvMate, ...pt(NET + SV - 4, W - A - 20), false]
+  ];
+  const [bx1, by1] = pt(NET, A), [bx2, by2] = pt(NET + SV, W/2);   // 서브가 들어갈 박스의 두 모서리
+  const [fx, fy] = pt(1, W/2 + 20), [tx, ty] = pt(NET + SV * 0.55, A + (W/2 - A) / 2);
+  let o = `<defs><marker id="rbArrow2" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z" fill="#111827"/></marker></defs>`;
+  o += `<path d="M${fx} ${fy} L ${tx} ${ty}" fill="none" stroke="#111827" stroke-width="1.4" stroke-dasharray="3 2.5" marker-end="url(#rbArrow2)"/>`;
+  people.forEach(([n, x, y, key]) => {
+    o += `<circle cx="${x}" cy="${y}" r="7.5" fill="${n[0] === 'A' ? 'var(--accent)' : 'var(--regular)'}" stroke="${key ? '#facc15' : '#fff'}" stroke-width="${key ? 2.4 : 1.2}"/>`;
+    o += `<text x="${x}" y="${y + 3}" text-anchor="middle" style="fill:#fff;font-size:7.5px">${n}</text>`;
+  });
+  $('rbPosSvg').innerHTML = rbCourt('pos', { x: Math.min(bx1, bx2), y: Math.min(by1, by2) }, { svg: o, aServes: !flip });
+  $('rbPosHead').innerHTML = `<b>${rbP + 1}번째 포인트 · ${RB_POINTS[rbP]}</b>${side} 사이드(서버 기준 ${ad ? '왼쪽' : '오른쪽'})에서 서브`;
+  $('rbPosText').innerHTML = `<b>${rbJosa(srv, '이', '가')}</b> ${side} 사이드에서 서브 → <b>${rbJosa(rcv, '이', '가')}</b> 받아요 (${side} 담당).<br>`
+    + `${rbJosa(mate, '은', '는')} 네트 앞 반대쪽, ${rbJosa(rcvMate, '은', '는')} 서비스라인 근처에 서요.`;
+  document.querySelectorAll('#rbGames button').forEach((b, i) => b.classList.toggle('on', i === rbG));
+  $('rbPrev').disabled = rbP === 0; $('rbNext').disabled = rbP === RB_POINTS.length - 1;
+}
 function rbTab(tab){
   document.querySelectorAll('#rbTabs button').forEach(b => b.classList.toggle('active', b.dataset.v === tab));
   $('rbDoubles').classList.toggle('rb-on', tab === 'doubles'); $('rbSingles').classList.toggle('rb-on', tab === 'singles');
