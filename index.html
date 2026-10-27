@@ -347,6 +347,93 @@
     .match{gap:6px;padding:8px}
     input,select,textarea{font-size:16px}   /* iOS 자동 확대 방지 */
   }
+  /* 테니스 룰북 화면 */
+  #viewRulebook{--court:#2f7d5b;--court-out:#d6ddd9;--ok-soft:#e9f7ee}
+  #viewRulebook .rb-tabs{display:flex;width:100%;margin-bottom:12px}
+  #viewRulebook .rb-tabs button{flex:1}
+  #viewRulebook .rb-pane{display:none}
+  #viewRulebook .rb-pane.rb-on{display:block}
+  /* cards */
+  #viewRulebook .card h2{margin:0 0 10px;font-size:16px;font-weight:800;display:flex;align-items:center;gap:8px;letter-spacing:-.02em}
+  #viewRulebook .card h2 .rb-n{flex:none;width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;font-size:12px;display:inline-flex;align-items:center;justify-content:center}
+  #viewRulebook .card h3{margin:14px 0 6px;font-size:14px;font-weight:800}
+  #viewRulebook .card p{margin:6px 0;font-size:14px}
+  #viewRulebook ul.rb-dots{margin:6px 0;padding:0;list-style:none;font-size:14px}
+  #viewRulebook ul.rb-dots li{position:relative;padding-left:14px;margin:5px 0}
+  #viewRulebook ul.rb-dots li::before{content:"";position:absolute;left:2px;top:.62em;width:5px;height:5px;border-radius:50%;background:var(--accent)}
+  #viewRulebook b.rb-k{color:var(--accent-ink)}
+  /* hero */
+  #viewRulebook .rb-hero{background:linear-gradient(135deg,#c8161f,#8e0f16);color:#fff}
+  #viewRulebook .rb-hero .rb-big{font-size:20px;font-weight:800;letter-spacing:-.03em;margin:0 0 4px}
+  #viewRulebook .rb-hero p{color:rgba(255,255,255,.88)}
+  #viewRulebook .rb-three{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+  #viewRulebook .rb-three div{background:rgba(255,255,255,.13);border-radius:12px;padding:10px 8px;font-size:12.5px;line-height:1.4;text-align:center}
+  #viewRulebook .rb-three div b{display:block;font-size:14px;margin-bottom:2px}
+  /* callouts */
+  #viewRulebook .rb-warn{border-radius:12px;padding:10px 12px;margin:10px 0 2px;font-size:13.5px}
+  #viewRulebook .rb-warn{background:var(--accent-soft);color:var(--accent-ink)}
+  #viewRulebook .rb-warn b{font-weight:800}
+  /* court svg */
+  #viewRulebook .rb-court{display:block;width:100%;height:auto;margin:4px 0 6px}
+  #viewRulebook .rb-court text{font-family:inherit;font-size:10px;font-weight:700;fill:var(--muted)}
+  #viewRulebook .rb-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin-bottom:4px}
+  #viewRulebook .rb-legend i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-2px;margin-right:5px}
+  /* score ladder */
+  #viewRulebook .rb-ladder{display:flex;align-items:center;gap:3px;margin:8px 0}
+  #viewRulebook .rb-ladder .rb-s{flex:1;min-width:0;background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:6px 2px;text-align:center}
+  #viewRulebook .rb-ladder .rb-s b{display:block;font-size:17px;font-weight:800;line-height:1.2}
+  #viewRulebook .rb-ladder .rb-s small{font-size:11px;color:var(--muted)}
+  #viewRulebook .rb-ladder .rb-s.rb-win{background:var(--accent);border-color:var(--accent);color:#fff}
+  #viewRulebook .rb-ladder .rb-s.rb-win small{color:rgba(255,255,255,.85)}
+  #viewRulebook .rb-ladder .rb-ar{color:#9ca3af;font-weight:700}
+  /* serve order */
+  #viewRulebook .rb-order{display:flex;align-items:center;flex-wrap:wrap;gap:4px;margin:8px 0}
+  #viewRulebook .rb-order .rb-p{border-radius:999px;padding:5px 11px;font-size:13px;font-weight:800}
+  #viewRulebook .rb-order .rb-p small{font-weight:600;opacity:.8;margin-left:3px}
+  #viewRulebook .rb-order .rb-a{background:var(--accent-soft);color:var(--accent-ink)}
+  #viewRulebook .rb-order .rb-b{background:var(--regular-soft);color:var(--regular)}
+  #viewRulebook .rb-order .rb-ar{color:#9ca3af;font-weight:700}
+  /* lose list */
+  #viewRulebook ul.rb-lose{margin:6px 0;padding:0;list-style:none;font-size:14px}
+  #viewRulebook ul.rb-lose li{display:flex;gap:9px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--line)}
+  #viewRulebook ul.rb-lose li:first-child{border-top:none}
+  #viewRulebook ul.rb-lose li::before{content:"✕";flex:none;width:20px;height:20px;border-radius:50%;background:var(--accent-soft);color:var(--accent);font-size:11px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;margin-top:1px}
+  #viewRulebook ul.rb-lose li.rb-ok::before{content:"✓";background:var(--ok-soft);color:var(--ok)}
+  /* Q&A */
+  #viewRulebook details{border-top:1px solid var(--line)}
+  #viewRulebook details:first-of-type{border-top:none}
+  #viewRulebook summary{list-style:none;cursor:pointer;padding:11px 0;font-size:14px;font-weight:700;display:flex;justify-content:space-between;align-items:center;gap:10px;-webkit-tap-highlight-color:transparent}
+  #viewRulebook summary::-webkit-details-marker{display:none}
+  #viewRulebook summary svg{flex:none;width:18px;height:18px;stroke:var(--muted);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .15s}
+  #viewRulebook details[open] summary svg{transform:rotate(180deg)}
+  #viewRulebook details .rb-ans{padding:0 0 12px;font-size:14px;color:#374151}
+  #viewRulebook details .rb-ans b{color:var(--accent-ink)}
+  /* steps */
+  #viewRulebook ol.rb-steps{list-style:none;margin:6px 0 0;padding:0;counter-reset:st}
+  #viewRulebook ol.rb-steps li{counter-increment:st;position:relative;padding:0 0 12px 34px;font-size:13.5px;color:#374151}
+  #viewRulebook ol.rb-steps li::before{content:counter(st);position:absolute;left:0;top:0;width:24px;height:24px;border-radius:50%;background:var(--accent-soft);color:var(--accent-ink);font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center}
+  #viewRulebook ol.rb-steps li:not(:last-child)::after{content:"";position:absolute;left:11.5px;top:27px;bottom:3px;width:1px;background:var(--line)}
+  #viewRulebook ol.rb-steps li b{display:block;font-size:14px;color:var(--text)}
+  #viewRulebook ol.rb-steps li em{font-style:normal;font-weight:700;color:var(--accent-ink)}
+  /* glossary */
+  #viewRulebook dl.rb-terms{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;margin:6px 0 0;font-size:13.5px}
+  #viewRulebook dl.rb-terms dt{font-weight:800;white-space:nowrap}
+  #viewRulebook dl.rb-terms dd{margin:0;color:#374151}
+  #viewRulebook dl.rb-calls{grid-template-columns:auto 1fr auto 1fr;gap:6px 10px;background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+  #viewRulebook dl.rb-calls dt{font-variant-numeric:tabular-nums}
+  /* compare table (singles) */
+  #viewRulebook table.rb-cmp{width:100%;border-collapse:collapse;font-size:13.5px;margin:6px 0}
+  #viewRulebook table.rb-cmp th,#viewRulebook table.rb-cmp td{text-align:left;padding:9px 6px;border-top:1px solid var(--line);vertical-align:top}
+  #viewRulebook table.rb-cmp tr:first-child th,#viewRulebook table.rb-cmp tr:first-child td{border-top:none}
+  #viewRulebook table.rb-cmp th{width:68px;color:var(--muted);font-weight:700;font-size:12.5px}
+  #viewRulebook table.rb-cmp td.rb-s{font-weight:700;color:var(--accent-ink)}
+  #viewRulebook table.rb-cmp thead th{font-size:12px;color:var(--muted);border-top:none;padding-top:0}
+  #viewRulebook .rb-same{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+  #viewRulebook .rb-same span{background:var(--soft);border:1px solid var(--line);border-radius:999px;padding:5px 11px;font-size:13px;font-weight:600}
+  @media(max-width:380px){
+    #viewRulebook .rb-three{grid-template-columns:1fr}
+    #viewRulebook .rb-three div{text-align:left}
+  }
 </style>
 </head>
 <body>
@@ -398,6 +485,7 @@
         <div class="muted" style="margin-top:6px;text-align:center">건의 내용은 관리자에게만 전달됩니다.</div>
       </div>
     </div>
+    <div class="strip" onclick="showView('rulebook')"><span class="lbl">룰북</span><span class="t">테니스 규칙 쉽게 보기 (복식·단식)</span><span class="muted">›</span></div>
     <div class="card hidden" id="duesCard">
       <div class="fold" id="duesFold" onclick="toggleDues()"><strong>회비<span id="myDuesNow"></span></strong><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></div>
       <div id="duesBody" class="hidden" style="margin-top:10px">
@@ -496,6 +584,233 @@
       <button class="primary hidden" id="noticeNewBtn" onclick="openNotice()">+ 공지 작성</button>
     </div>
     <div id="noticeList"></div>
+  </section>
+
+  <!-- 테니스 룰북 (로그인 없이도 볼 수 있음) -->
+  <section id="viewRulebook" class="hidden">
+    <button class="back" onclick="goBack()"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>뒤로</button>
+    <div class="row" style="margin-bottom:12px"><strong style="font-size:18px">테니스 룰북</strong></div>
+    <div class="seg rb-tabs" id="rbTabs">
+      <button data-v="doubles" class="active" onclick="rbTab('doubles')">복식</button>
+      <button data-v="singles" onclick="rbTab('singles')">단식</button>
+    </div>
+  <!-- ================= 복식 ================= -->
+  <section class="rb-pane rb-on" id="rbDoubles">
+
+    <div class="card rb-hero">
+      <p class="rb-big">복식은 2 대 2</p>
+      <p>이 세 가지만 알면 바로 칠 수 있어요.</p>
+      <div class="rb-three">
+        <div><b>넓은 코트</b>맨 바깥 줄까지</div>
+        <div><b>대각선 서브</b>건너편 박스로</div>
+        <div><b>한 번만 튀기기</b>두 번 튀면 실점</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="rb-n">1</span>코트</h2>
+      <div class="rb-legend">
+        <span><i style="background:var(--court)"></i>공이 떨어져도 되는 곳</span>
+      </div>
+      <div data-court="doubles"></div>
+      <ul class="rb-dots">
+        <li>복식은 양옆 <b class="rb-k">앨리</b>까지 써요. 서브만 안쪽 박스에 넣어요.</li>
+        <li>공이 줄에 <b class="rb-k">조금이라도 닿으면 인</b>.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="rb-n">2</span>점수 세는 법</h2>
+      <div class="rb-ladder">
+        <div class="rb-s"><b>0</b><small>러브</small></div><span class="rb-ar">›</span>
+        <div class="rb-s"><b>15</b><small>피프틴</small></div><span class="rb-ar">›</span>
+        <div class="rb-s"><b>30</b><small>써티</small></div><span class="rb-ar">›</span>
+        <div class="rb-s"><b>40</b><small>포티</small></div><span class="rb-ar">›</span>
+        <div class="rb-s rb-win"><b>게임</b><small>한 점 더</small></div>
+      </div>
+      <ul class="rb-dots">
+        <li><b class="rb-k">서브하는 팀 점수를 먼저</b> 불러요. "30-15" = 서브팀 30.</li>
+        <li>점수가 같으면 <b class="rb-k">"올"</b>, 0점은 <b class="rb-k">"러브"</b>라고 불러요. 40-40만은 "포티 올" 대신 <b class="rb-k">"듀스"</b>.</li>
+        <li>동호인은 보통 <b class="rb-k">노애드</b>라서 듀스가 되면 <b class="rb-k">한 점으로 끝</b>. 받는 팀이 포·백 중 받을 쪽을 골라요.</li>
+      </ul>
+      <h3>이렇게 불러요</h3>
+      <dl class="rb-terms rb-calls">
+        <dt>0-0</dt><dd>러브 올</dd>
+        <dt>15-0</dt><dd>피프틴 러브</dd>
+        <dt>0-15</dt><dd>러브 피프틴</dd>
+        <dt>15-15</dt><dd>피프틴 올</dd>
+        <dt>30-15</dt><dd>써티 피프틴</dd>
+        <dt>30-30</dt><dd>써티 올</dd>
+        <dt>40-30</dt><dd>포티 써티</dd>
+        <dt>40-40</dt><dd>듀스</dd>
+      </dl>
+      <p class="muted">게임 수는 "게임 3-2"처럼 숫자로, 같으면 "게임 2 올". 타이브레이크 점수도 "3-2"처럼 숫자로 불러요.</p>
+      <h3>세트와 타이브레이크</h3>
+      <ul class="rb-dots">
+        <li><b class="rb-k">6게임을 먼저</b> 따면 세트. 동점이 되면 <b class="rb-k">타이브레이크</b>로 끝내요.</li>
+        <li>타이브레이크는 1, 2, 3… 숫자로 세고 <b class="rb-k">7점 먼저 + 2점 차</b>.</li>
+        <li><b class="rb-k">홀수 게임</b>(1, 3, 5…)이 끝나면 코트를 바꿔요.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="rb-n">3</span>서브와 리시브</h2>
+      <div class="rb-legend">
+        <span><i style="background:#facc15"></i>서브가 들어가야 하는 박스</span>
+      </div>
+      <div data-court="serve"></div>
+      <ul class="rb-dots">
+        <li>베이스라인 <b class="rb-k">뒤</b>에서 <b class="rb-k">대각선</b> 박스로 넣어요. 줄을 밟으면 풋폴트.</li>
+        <li>게임 첫 포인트는 <b class="rb-k">포 사이드(오른쪽)</b>, 그다음부터 포인트마다 번갈아요.</li>
+        <li>기회는 <b class="rb-k">두 번</b>. 둘 다 실패하면 더블폴트로 1점 줘요.</li>
+        <li>서브가 <b class="rb-k">네트 맞고 박스에 들어가면 렛</b>, 그 서브만 다시.</li>
+      </ul>
+      <h3>서브 순서</h3>
+      <div class="rb-order">
+        <span class="rb-p rb-a">A팀 1번</span><span class="rb-ar">›</span>
+        <span class="rb-p rb-b">B팀 1번</span><span class="rb-ar">›</span>
+        <span class="rb-p rb-a">A팀 2번</span><span class="rb-ar">›</span>
+        <span class="rb-p rb-b">B팀 2번</span>
+      </div>
+      <p class="muted">한 게임은 한 사람이 끝까지 서브해요. 이 순서는 세트 끝까지 그대로.</p>
+      <h3>리시브</h3>
+      <ul class="rb-dots">
+        <li>팀 안에서 <b class="rb-k">포·백 사이드</b>를 나눠 정하고, 세트 끝까지 바꾸지 않아요.</li>
+        <li>서브는 <b class="rb-k">한 번 튄 뒤</b> 받아요. 파트너 쪽 서브를 대신 받으면 실점.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="rb-n">4</span>이럴 땐 실점</h2>
+      <ul class="rb-lose">
+        <li>내 쪽에서 공이 두 번 튀었어요</li>
+        <li>친 공이 밖에 떨어지거나 네트에 걸렸어요</li>
+        <li>공이 몸이나 옷에 맞았어요</li>
+        <li>공이 살아 있을 때 몸·라켓이 네트에 닿았어요</li>
+        <li>파트너와 둘이 연달아 쳤어요</li>
+        <li class="rb-ok">랠리 중 공이 네트 맞고 넘어간 건 계속 진행</li>
+        <li class="rb-ok">랠리는 둘 중 누가 쳐도 괜찮아요</li>
+      </ul>
+      <div class="rb-warn"><b>나갈 공은 피하세요</b> · 아웃될 공이라도 튀기 전에 몸에 맞으면 내 실점이에요.</div>
+    </div>
+
+    <div class="card">
+      <h2><span class="rb-n">5</span>동호인은 보통 이렇게 해요</h2>
+      <ul class="rb-dots">
+        <li><b class="rb-k">6게임 1세트 · 노애드</b>가 가장 흔해요. 타이브레이크는 5-5 또는 6-6에서 시작 (모임마다 달라요).</li>
+        <li>대회에 따라 <b class="rb-k">노렛</b>(서브가 네트 맞고 들어가도 그대로 진행)을 쓰기도 해요.</li>
+      </ul>
+      <h3>자주 듣는 말</h3>
+      <dl class="rb-terms">
+        <dt>포 사이드</dt><dd>오른쪽 (듀스 코트)</dd>
+        <dt>백 사이드</dt><dd>왼쪽 (애드 코트)</dd>
+        <dt>난타</dt><dd>경기 전 몸풀기 랠리</dd>
+        <dt>노애드</dt><dd>듀스에서 한 점으로 끝</dd>
+        <dt>타이</dt><dd>타이브레이크</dd>
+        <dt>남복·여복·혼복</dt><dd>남자·여자·혼합 복식</dd>
+      </dl>
+    </div>
+
+    <div class="card">
+      <h2><span class="rb-n">6</span>경기 시작 순서</h2>
+      <ol class="rb-steps">
+        <li><b>인사</b>네트에 모여 "잘 부탁드립니다"</li>
+        <li><b>난타</b>5분쯤 몸풀기 랠리, 서브도 몇 개 연습</li>
+        <li><b>방식 맞추기</b>몇 게임인지, 노애드인지, 타이브레이크는 언제인지</li>
+        <li><b>라켓 돌리기 · 가위바위보</b>한 명이 라켓을 세워 돌리면 상대가 "업?" "다운?" (손잡이 끝 로고 방향). 가위바위보로 정해도 돼요</li>
+        <li><b>고르기</b>이긴 팀이 <em>서브·리시브</em> 또는 <em>코트</em> 중 하나를 고르고, 진 팀이 남은 것을 골라요</li>
+        <li><b>팀 안에서 정하기</b>누가 먼저 서브할지, 누가 포·백 사이드에서 받을지</li>
+        <li><b>첫 서브</b>경기 <em>맨 처음 서브할 때만</em> 상대에게 인사하고 시작. 다음 게임·세트부터는 인사 없이 바로 서브해요</li>
+      </ol>
+    </div>
+
+    <div class="card">
+      <h2><span class="rb-n">7</span>판정과 코트 에티켓</h2>
+      <h3>판정</h3>
+      <ul class="rb-dots">
+        <li><b class="rb-k">내 코트 공은 우리 팀이 판정</b>. 아웃이면 바로 크게 "아웃" + 손으로 표시.</li>
+        <li>애매하면 <b class="rb-k">상대에게 유리하게 (인)</b>.</li>
+      </ul>
+      <h3>경기 중</h3>
+      <ul class="rb-dots">
+        <li>서버는 서브 전에 <b class="rb-k">점수를 크게</b> 불러요.</li>
+        <li>네트 맞고 운 좋게 넘어간 공엔 <b class="rb-k">손 들어 "죄송합니다"</b>.</li>
+        <li>상대 몸에 공을 맞혔으면 <b class="rb-k">바로 사과</b>.</li>
+        <li>좋은 샷엔 상대 공이라도 <b class="rb-k">"나이스"</b>.</li>
+        <li>파트너 실수는 <b class="rb-k">탓하지 않기</b>. 경기 중 훈수도 하지 않아요.</li>
+        <li>공은 <b class="rb-k">다음 서버 쪽으로</b> 모아 주고, 줄 땐 한 번 튀겨서 받기 쉽게.</li>
+      </ul>
+      <h3>옆 코트와 끝날 때</h3>
+      <ul class="rb-dots">
+        <li>옆 코트 공이 들어오면 <b class="rb-k">"볼!"</b> 외치고 그 포인트는 다시.</li>
+        <li>옆 코트로 간 공은 <b class="rb-k">그쪽 랠리가 끝난 뒤</b> 달라고 하거나 돌려줘요. 뒤로 지나갈 때도 마찬가지.</li>
+        <li>끝나면 네트에서 <b class="rb-k">"수고하셨습니다"</b> 인사. 클레이·모래 코트면 다 같이 코트 정리.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="rb-n">8</span>헷갈리는 상황</h2>
+      <div class="rb-qa">
+        <details><summary>서브가 네트 맞고 들어갔어요<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></summary>
+          <div class="rb-ans"><b>렛</b>, 그 서브만 다시 해요. 노렛 규칙이면 그대로 진행.</div></details>
+        <details><summary>나갈 공을 노바운드로 쳤어요<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></summary>
+          <div class="rb-ans">라켓으로 쳤으면 <b>플레이 계속</b>. 몸에 맞았으면 <b>내 실점</b>.</div></details>
+        <details><summary>서브 순서가 틀렸어요<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></summary>
+          <div class="rb-ans">알게 된 순간 <b>원래 순서로</b>. 그때까지 난 점수는 그대로 인정해요.</div></details>
+        <details><summary>리시브 자리를 바꿔 섰어요<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></summary>
+          <div class="rb-ans">그 게임은 <b>그대로 끝까지</b>, 다음 리시브 게임부터 원래 자리로.</div></details>
+        <details><summary>토스했다가 안 치고 잡았어요<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></summary>
+          <div class="rb-ans">휘두르지 않았으면 <b>폴트 아니에요</b>. 다시 토스하면 돼요.</div></details>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 단식 ================= -->
+  <section class="rb-pane" id="rbSingles">
+
+    <div class="card rb-hero">
+      <p class="rb-big">단식은 1 대 1</p>
+      <p>복식과 거의 같아요. 다른 점은 세 가지예요.</p>
+      <div class="rb-three">
+        <div><b>좁은 코트</b>안쪽 줄까지만</div>
+        <div><b>혼자 서브</b>게임마다 번갈아</div>
+        <div><b>혼자 리시브</b>포·백 다 받기</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="rb-n">1</span>코트</h2>
+      <div class="rb-legend">
+        <span><i style="background:var(--court)"></i>공이 떨어져도 되는 곳</span>
+        <span><i style="background:var(--court-out)"></i>단식에선 아웃</span>
+      </div>
+      <div data-court="singles"></div>
+      <ul class="rb-dots">
+        <li>앨리는 <b class="rb-k">쓰지 않아요</b>. 앨리에 떨어지면 아웃.</li>
+        <li>안쪽 옆줄에 조금이라도 닿으면 인. 서브 박스는 복식과 같아요.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="rb-n">2</span>복식과 다른 점</h2>
+      <table class="rb-cmp">
+        <thead><tr><th></th><td class="muted">복식</td><td class="muted"><b>단식</b></td></tr></thead>
+        <tr><th>코트</th><td>바깥 줄까지</td><td class="rb-s">안쪽 줄까지</td></tr>
+        <tr><th>서브</th><td>4명이 돌아가며</td><td class="rb-s">둘이 게임마다 번갈아</td></tr>
+        <tr><th>리시브</th><td>포·백 나눠서</td><td class="rb-s">혼자 포·백 다</td></tr>
+        <tr><th>노애드</th><td>받는 팀이 받을 사람 고름</td><td class="rb-s">받는 사람이 포·백 고름</td></tr>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2><span class="rb-n">3</span>복식과 같은 점</h2>
+      <div class="rb-same">
+        <span>점수 세는 법·노애드</span><span>세트·타이브레이크</span><span>대각선 서브·두 번 기회</span>
+        <span>렛·풋폴트</span><span>실점 상황</span><span>동호인 방식</span><span>경기 시작 순서</span><span>판정·에티켓</span>
+      </div>
+      <button class="ghost" onclick="rbTab('doubles')">복식 탭에서 보기</button>
+    </div>
+  </section>
   </section>
 
   <!-- 관리자 페이지 -->
@@ -1646,7 +1961,7 @@ async function submitCreate(){
 // ===== 상세 =====
 // ===== 화면 전환 =====
 // 뒤로가기 기록: 실제로 거쳐 온 화면 순서대로 되돌아가되, 같은 화면은 한 번만 (이미 거쳐 온 화면으로 가면 그 자리로 되돌림)
-// → 화면 종류(홈·달력·관리·상세·공지)가 다섯뿐이라 기록이 끝없이 쌓이지 않음. 기록마다 d(깊이), k(그때까지 거쳐 온 화면들)를 둠
+// → 화면 종류(홈·달력·관리·상세·공지·룰북)가 여섯뿐이라 기록이 끝없이 쌓이지 않음. 기록마다 d(깊이), k(그때까지 거쳐 온 화면들)를 둠
 let pendingNav = null, pendingView = null, exitTimer = null;
 // 처음 화면 아래에 같은 화면의 '보호 기록'을 하나 둠. 뒤로가기로 거기 닿으면 안내, 2초 지나면 위에 다시 쌓음
 function restoreTop(){
@@ -1684,9 +1999,9 @@ function showView(name, opts){
   if (name === 'admin' && !pop) resetAdminDrafts();   // 관리 화면에 새로 들어오면 서버 값으로
   state.current = null;
   state.view = name;
-  if (name !== 'detail' && name !== 'notices') state.prevView = name;
+  if (name !== 'detail' && name !== 'notices' && name !== 'rulebook') state.prevView = name;
   const gated = !state.user && (name === 'calendar' || name === 'detail');   // 모임 일정·상세는 로그인 후
-  ['home','calendar','detail','admin','notices'].forEach(v => $('view'+v[0].toUpperCase()+v.slice(1)).classList.toggle('hidden', v!==name || gated));
+  ['home','calendar','detail','admin','notices','rulebook'].forEach(v => $('view'+v[0].toUpperCase()+v.slice(1)).classList.toggle('hidden', v!==name || gated));
   $('loginGate').classList.toggle('hidden', !gated);
   if (gated) $('gateMsg').textContent = name === 'detail' ? '로그인하면 모임 내용을 볼 수 있어요' : '로그인하면 모임 일정을 볼 수 있어요';
   document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.view===name));
@@ -2577,6 +2892,48 @@ function renderStandings(){
 document.addEventListener('focusin', e => { if (e.target.matches('textarea,input:not([type=checkbox]):not([type=radio]):not([type=date]):not([type=time])')) document.body.classList.add('typing'); });
 document.addEventListener('focusout', () => document.body.classList.remove('typing'));
 
+// ===== 테니스 룰북 =====
+// 룰북 코트 그림: 가로로 눕힌 코트, 1 = 10cm (23.77m × 10.97m)
+function rbCourt(mode){
+  const L = 237.7, W = 109.7, A = 13.7, NET = L/2, SV = 64;   // 길이·폭·앨리 폭·네트 위치·네트~서비스라인
+  const singles = mode === 'singles', serve = mode === 'serve';
+  const line = (x1,y1,x2,y2,w=1.2) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#fff" stroke-width="${w}"/>`;
+  let s = `<svg class="rb-court" viewBox="-14 -18 ${L+28} ${W+38}" role="img" aria-label="테니스 코트 그림">`;
+  // 바닥: 공이 떨어져도 되는 곳은 초록
+  s += `<rect x="0" y="0" width="${L}" height="${W}" fill="${singles ? 'var(--court-out)' : 'var(--court)'}" rx="1"/>`;
+  if (singles) s += `<rect x="0" y="${A}" width="${L}" height="${W-2*A}" fill="var(--court)"/>`;
+  if (serve) s += `<rect x="${NET}" y="${A}" width="${SV}" height="${W/2-A}" fill="#facc15" opacity=".85"/>`;
+  // 줄
+  s += `<rect x="0" y="0" width="${L}" height="${W}" fill="none" stroke="#fff" stroke-width="1.4"/>`;
+  s += line(0,A,L,A) + line(0,W-A,L,W-A);
+  s += line(NET-SV,A,NET-SV,W-A) + line(NET+SV,A,NET+SV,W-A);
+  s += line(NET-SV,W/2,NET+SV,W/2);
+  s += line(0,W/2,3,W/2) + line(L-3,W/2,L,W/2);
+  // 네트
+  s += `<line x1="${NET}" y1="-4" x2="${NET}" y2="${W+4}" stroke="#111827" stroke-width="2"/>`;
+  s += `<text x="${NET}" y="-7" text-anchor="middle">네트</text>`;
+  if (serve) {
+    const sx = -5, sy = W/2 + 18, tx = NET + SV*0.6, ty = A + (W/2-A)*0.5;
+    s += `<defs><marker id="rbArrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z" fill="#111827"/></marker></defs>`;
+    s += `<path d="M${sx+4} ${sy-2} Q ${NET*0.55} ${-8} ${tx} ${ty}" fill="none" stroke="#111827" stroke-width="1.4" stroke-dasharray="3 2.5" marker-end="url(#rbArrow)"/>`;
+    s += `<circle cx="${sx}" cy="${sy}" r="4" fill="var(--accent)" stroke="#fff" stroke-width="1"/>`;
+    s += `<text x="${sx}" y="${W+14}" text-anchor="start">서버 (포 사이드)</text>`;
+    s += `<text x="${NET+SV/2}" y="${W+14}" text-anchor="middle">대각선 서비스 박스로</text>`;
+  } else {
+    s += `<text x="${NET-SV/2}" y="${A+(W/2-A)/2+3.5}" text-anchor="middle" style="fill:#fff">서비스 박스</text>`;
+    s += `<text x="${(NET-SV)/2}" y="${A/2+3.5}" text-anchor="middle" style="fill:${singles ? 'var(--muted)' : '#fff'}">앨리 ${singles ? '(아웃)' : '(인)'}</text>`;
+    s += `<text x="0" y="${W+14}" text-anchor="start">← 베이스라인(끝줄)</text>`;
+    s += `<text x="${L}" y="${W+14}" text-anchor="end">${singles ? '안쪽 옆줄이 경계' : '맨 바깥 줄이 경계'}</text>`;
+  }
+  return s + '</svg>';
+}
+document.querySelectorAll('#viewRulebook [data-court]').forEach(el => el.outerHTML = rbCourt(el.dataset.court));
+function rbTab(tab){
+  document.querySelectorAll('#rbTabs button').forEach(b => b.classList.toggle('active', b.dataset.v === tab));
+  $('rbDoubles').classList.toggle('rb-on', tab === 'doubles'); $('rbSingles').classList.toggle('rb-on', tab === 'singles');
+  window.scrollTo(0, 0);
+}
+
 // ===== 시작 =====
 // 시작 주소 기억 후 정리 (?m= 이 남아 있으면 새로고침 때 같은 모임이 다시 열림)
 const startParams = new URLSearchParams(location.search);
@@ -2584,7 +2941,8 @@ const cameFromLogin = startParams.has('code') || location.hash.includes('access_
 history.replaceState({ view: localStorage.getItem('startView') || 'home', d: 0 }, '', startParams.has('m') ? location.pathname : location.href);
 Promise.all([initAuth(), loadSettings()]).then(() => {
   const v = localStorage.getItem('startView') || 'home';
-  history.replaceState(Object.assign({}, history.state, { view: v, d: 0, k: [v], guard: 1 }), ''); history.pushState({ view: v, d: 0, k: [v] }, '');   // 아래 기록은 '한 번 더 누르면 종료' 보호용 showView(v, { pop: true });
+  history.replaceState(Object.assign({}, history.state, { view: v, d: 0, k: [v], guard: 1 }), ''); history.pushState({ view: v, d: 0, k: [v] }, '');   // 아래 기록은 '한 번 더 누르면 종료' 보호용
+  showView(v, { pop: true });
   handleAuthReturn();   // 카카오 로그인·연결 결과 안내
   // 카톡 공유 링크(?m=모임id)로 들어왔거나, 카카오 로그인 전에 보던 모임이 있으면 그 모임 열기
   const ret = cameFromLogin ? sessionStorage.getItem('returnMeetup') : null;
